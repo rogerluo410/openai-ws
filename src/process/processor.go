@@ -17,9 +17,10 @@ type Processor struct {
 	pool     *ants.Pool  
 }
 
-func New() *Processor {
+func NewProcessor() *Processor {
   if pool, err := ants.NewPool(poolNum); err != nil {
     // 抛出错误
+    panic(err)
   } else {
     return &Processor{
       pool: pool,
@@ -28,9 +29,17 @@ func New() *Processor {
   return nil
 }
 
+func (p *Processor) listen() {
+  for {
+    select {
+      
+    }
+  }
+}
 
-func (p *Processor) Handle(job *Job) {
-  // p.pool.Submit()
+
+func (p *Processor) HandleTask(pf func()) {
+  p.pool.Submit(pf)
 }
 
 

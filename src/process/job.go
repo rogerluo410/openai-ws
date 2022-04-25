@@ -8,6 +8,7 @@ import (
 
 type Job struct {
   Client    *client.Client
+  sequence  int   // 序号
 	Type      int   //0: 输入消息； 1: 输出消息
   Message   string
 }

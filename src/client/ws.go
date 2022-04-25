@@ -2,8 +2,8 @@ package client
 
 import (
 	"io"
-	"net/http"
 	"time"
+
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 )
@@ -19,21 +19,14 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 )
 
-var (
-	upgrader = websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-		HandshakeTimeout: 62 * time.Second,
-		CheckOrigin: func(r *http.Request) bool {
-			//r.URL *url.URL
-      //r.Header Header
-			return true
-		},
-	}
-)
-
 type Ws struct {
 	conn *websocket.Conn
+}
+
+func NewWs(conn *websocket.Conn) *Ws {
+	return &Ws{
+		conn: conn,
+	}
 }
 
 func (w *Ws) Close() {
@@ -42,6 +35,7 @@ func (w *Ws) Close() {
 
 func (w *Ws) Reader(client *Client) {
 	defer func() {
+		log.Fatal("Reader 退出...")
 		w.conn.WriteMessage(websocket.CloseMessage, []byte{})
 		w.conn.Close()
 	} ()
@@ -63,7 +57,7 @@ func (w *Ws) Reader(client *Client) {
 
 	for {
 		_, msg, err := w.conn.ReadMessage()
-		l := log.WithFields(log.Fields{ "Msg": msg, "Err": err})
+		l := log.WithFields(log.Fields{ "Msg": string(msg), "Err": err})
 
 		if err != nil {
 			if websocket.IsCloseError(err, websocket.CloseGoingAway) || err == io.EOF {
@@ -78,7 +72,8 @@ func (w *Ws) Reader(client *Client) {
 		}
 
 		// 写入管道
-		client.sendMsg <- string(msg)
+		l.Info("客户端发送数据!")
+		client.SendMsg <- string(msg)
 	}
 }
 
@@ -101,7 +96,7 @@ func (w *Ws) Writer(client *Client) {
 					log.Error("发送心跳包失败")
 					return
 				}
-		  case msg := <- client.receiveMsg:
+		  case msg := <- client.ReceiveMsg:
 				if err := w.conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
 					// 如果遇到ws写错误，则关闭websocket连接
 					log.WithFields(log.Fields{

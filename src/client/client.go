@@ -7,26 +7,35 @@ import (
 )
 
 type Client struct {
-	pWs            *Ws              // ws
-	sendMsg        chan string      // 客户端发送消息管道
-	receiveMsg     chan string      // 客户端接收消息管道
-	route          string           // 路由
-	uuid           string           // 客户端id
-	token          string           // 认证token
-	address        string           // 客户端ip
-  verified       bool             // token认证状态 
-	connected      bool             // ws连接状态
+	Conn            *Ws              // ws
+	SendMsg        chan string      // 客户端发送消息管道
+	ReceiveMsg     chan string      // 客户端接收消息管道
+	Provider       string           // 提供商
+	ApiName        string           // api服务名
+	ClientId       string           // 客户端id
+	Token          string           // 认证token
+	Address        string           // 客户端ip
+  Verified       bool             // token认证状态 
+	Connected      bool             // ws连接状态
 }
 
-func New(route string, uuid string, token string, address string) *Client {
+func NewClient(
+	conn      *Ws,
+	provider string,
+	apiName string,
+	clientId string, 
+	token string, 
+	address string,
+) *Client {
   // Verify token from openai_backend
 
-	return &Client{
-		route: route,
-		uuid: uuid,
-		token: token,
-		address: address,
-		sendMsg: make(chan string),
-		receiveMsg: make(chan string),
+	return &Client{ Conn: conn,
+		Provider: provider,
+		ApiName: apiName,
+		ClientId: clientId,
+		Token: token,
+		Address: address,
+		SendMsg: make(chan string),
+		ReceiveMsg: make(chan string),
 	}
 }
