@@ -5,9 +5,6 @@ import (
 	"os"
 
 	log "github.com/sirupsen/logrus"
-
-	_ "github.com/rogerluo410/openai-ws/src/process"
-  _ "github.com/rogerluo410/openai-ws/src/client"
 )
 
 var (

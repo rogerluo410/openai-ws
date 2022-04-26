@@ -7,8 +7,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
-
-	client "github.com/rogerluo410/openai-ws/src/client"
 )
 
 var (
@@ -26,21 +24,28 @@ var (
 )
 
 type Server struct {
-	list       []*client.Client
+	list       []*Client
+  processor  *Processor
 }
 
 func NewServer() *Server {
+	pp := NewProcessor()
+
+	// 启动处理器消息管道监听
+  go pp.listen()
+
 	return &Server{
-		list: make([]*client.Client, initCap),
+		list: make([]*Client, initCap),
+		processor: pp,
 	}
 }
 
-func (s *Server) addClient(c *client.Client) {
+func (s *Server) addClient(c *Client) {
 	s.list = append(s.list, c)
 
-	// 启动 ws读写监听
-	go c.Conn.Reader(c)
-	go c.Conn.Writer(c)
+	// 启动ws读写监听
+	go c.Conn.Reader(c, s.processor)
+	go c.Conn.Writer(c, s.processor)
 }
 
 func (s *Server) listenClient() {
@@ -94,7 +99,7 @@ func (s *Server) handleWebsocket(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	//注册client
-  conn := client.NewWs(ws)
-	client := client.NewClient(conn, provider[0], apiName[0], clientId[0], token[0], ws.RemoteAddr().String())
+  conn := NewWs(ws)
+	client := NewClient(conn, provider[0], apiName[0], clientId[0], token[0], ws.RemoteAddr().String())
 	s.addClient(client)
 }
