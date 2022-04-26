@@ -5,6 +5,8 @@ import (
 	"os"
 
 	log "github.com/sirupsen/logrus"
+
+	server "github.com/rogerluo410/openai-ws/src/server"
 )
 
 var (
@@ -28,7 +30,7 @@ func main() {
 
 	// 启动服务
 	log.Info("开启服务中...")
-	server := NewServer()
-	http.HandleFunc("/ws", server.handleWebsocket)
+	serverInstance := server.NewServer()
+	http.HandleFunc("/ws", serverInstance.HandleWebsocket)
 	log.Info(http.ListenAndServe(":"+port, nil))
 }
