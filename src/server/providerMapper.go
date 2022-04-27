@@ -1,17 +1,20 @@
 package server
 
 import (
+	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 )
 
-func ProviderMapper(i interface{}) {
-	log.Info("开启服务路由映射...")
-	if t, ok := i.(*Job); ok {
-    log.WithFields(log.Fields{
-			"provider": t.Client.Provider,
-			"apiName":  t.Client.ApiName,
-		}).Info("服务路由映射成功...")
-		XunfeiVoicedictationAccess(t) 
-	}
-  
+func ProviderRequestMapper(i interface{}, c *Client) interface{} {
+	log.Info("开启路由请求映射...")
+	return XunfeiVoicedictationRequestParams(i) 
+}
+
+func ProviderResponseMapper(i interface{}, c *Client) interface{} {
+	log.Info("开启路由响应映射...")
+	return XunfeiVoicedictationResponse(i) 
+}
+
+func ProviderWsMapper(provider string, apiName string) (*websocket.Conn, error) {
+	return XunfeiVoicedictationConn()
 }

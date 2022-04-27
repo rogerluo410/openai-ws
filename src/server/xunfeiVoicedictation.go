@@ -12,8 +12,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"encoding/json"
+	"reflect"
 
 	"github.com/gorilla/websocket"
+	_ "github.com/sirupsen/logrus"
 )
 
 var (
@@ -29,56 +31,27 @@ const (
 	STATUS_LAST_FRAME     = 2
 )
 
-func XunfeiVoicedictationAccess(job *Job) {
-	fmt.Println(HmacWithShaTobase64("hmac-sha256","hello\nhello","hello"))
-	st:= time.Now()
-	d := websocket.Dialer{
-		HandshakeTimeout: 5 * time.Second,
-	}
-	//握手并建立websocket连接
-	conn, resp, err := d.Dial(assembleAuthUrl(hostUrl, apiKey, apiSecret), nil)
-	if err != nil {
-			panic(readResp(resp)+err.Error())
-			return
-	}else if resp.StatusCode !=101{
-			panic(readResp(resp)+err.Error())
-	}
+type Frame struct {
+  Data FrameData `json:"data"`
+	Common CommonData `json:"common"`
+  Business BusinessData `json:"business"`
+}
 
-	if b, err := json.Marshal(job.Message); err != nil {
-		panic(err.Error())
-		return
-	} else {
-		conn.WriteJSON(b)
-	}
+type CommonData struct {
+  App_id string `json:"app_id"`
+}
 
-	//获取返回的数据
-  for {
-		var resp = RespData{}
-		_,msg,err := conn.ReadMessage()
-		if err != nil {
-			fmt.Println("read message error:", err)
-			break
-		}
-		json.Unmarshal(msg, &resp)
-		//fmt.Println(string(msg))
-		fmt.Println(resp.Data.Result.String(),resp.Sid)
+type BusinessData struct {
+  Language string `json:"language"`
+	Domain string `json:"domain"`
+	Accent string `json:"accent"`
+}
 
-		// 推送给客户端管道
-    job.Client.SendMsg <- resp.Data.Result.String()
-
-		if resp.Code != 0 {
-			fmt.Println(resp.Code,resp.Message, time.Since(st))
-			return
-		}
-		//decoder.Decode(&resp.Data.Result)
-		if resp.Data.Status == 2{
-			//cf()
-			//fmt.Println("final:",decoder.String())
-			fmt.Println(resp.Code,resp.Message, time.Since(st))
-			break
-			//return
-		}
-	}
+type FrameData struct {
+	Format     string `json:"format"`
+	Audio      string `json:"audio"`
+	Encoding   string `json:"encoding"`
+	Status 	   int `json:"status"`
 }
 
 type RespData struct {
@@ -90,8 +63,78 @@ type RespData struct {
 
 type Data struct {
 	Result Result `json:"result"`
-	Status int         `json:"status"`
+	Status int    `json:"status"`
 }
+
+type Result struct {
+	Ls bool `json:"ls"`
+	Rg []int `json:"rg"`
+	Sn int `json:"sn"`
+	Pgs string `json:"pgs"`
+	Ws []Ws `json:"ws"`
+}
+
+func (t *Result) String() string {
+	var wss string
+	for _,v:=range t.Ws{
+			wss+=v.String()
+	}
+	return wss
+}
+
+type Ws struct {
+	Bg int `json:"bg"`
+	Cw []Cw `json:"cw"`
+}
+
+func (w *Ws) String()string  {
+	var wss string
+	for _,v:=range w.Cw{
+			wss+=v.W
+	}
+	return wss
+}
+
+type Cw struct {
+	Sc int `json:"sc"`
+	W string `json:"w"`
+}
+
+// 连接讯飞语音听写的连接串
+func XunfeiVoicedictationConn() (*websocket.Conn, error) {
+	d := websocket.Dialer{
+		HandshakeTimeout: 5 * time.Second,
+	}
+	//握手并建立websocket连接
+	conn, resp, err := d.Dial(assembleAuthUrl(hostUrl, apiKey, apiSecret), nil)
+	if err != nil {
+		panic(readResp(resp) + err.Error())
+		return nil, err
+	} else if resp.StatusCode != 101 {
+		panic(readResp(resp) + err.Error())
+		return nil, err
+	}
+
+  return conn, nil
+}
+
+func XunfeiVoicedictationRequestParams(i interface{}) interface{} {
+	var frame = Frame{}
+	str, _ := i.(string)
+	json.Unmarshal([]byte(str), &frame)
+	mFrame := ConvertStructToMap(reflect.ValueOf(frame))
+	return mFrame
+}
+
+// 解析响应串, 暂时弃用, 响应串透传给调用方
+func XunfeiVoicedictationResponse(i interface{}) interface{} {
+	var resp = RespData{}
+	bytes, _ := i.([]byte)
+	json.Unmarshal(bytes, &resp)
+
+	return resp.Data.Result.String()
+}
+	
 
 //创建鉴权url  apikey 即 hmac username
 func assembleAuthUrl(hosturl string, apiKey, apiSecret string) string {
@@ -141,66 +184,4 @@ func readResp(resp *http.Response) string {
 		panic(err)
 	}
 	return fmt.Sprintf("code=%d,body=%s", resp.StatusCode, string(b))
-}
-
-//解析返回数据，仅供demo参考，实际场景可能与此不同。
-type Decoder struct {
-	results []*Result
-}
-
-func (d *Decoder)Decode(result *Result)  {
-	if len(d.results)<=result.Sn{
-		d.results = append(d.results,make([]*Result, result.Sn-len(d.results)+1)...)
-	}
-	if result.Pgs == "rpl"{
-		for i:=result.Rg[0];i<=result.Rg[1];i++{
-			d.results[i]=nil
-		}
-	}
-	d.results[result.Sn] = result
-}
-
-func (d *Decoder)String()string  {
-	var r string
-	for _,v:=range d.results{
-			if v== nil{
-					continue
-			}
-			r += v.String()
-	}
-	return r
-}
-
-type Result struct {
-	Ls bool `json:"ls"`
-	Rg []int `json:"rg"`
-	Sn int `json:"sn"`
-	Pgs string `json:"pgs"`
-	Ws []Ws `json:"ws"`
-}
-
-func (t *Result)String() string {
-	var wss string
-	for _,v:=range t.Ws{
-			wss+=v.String()
-	}
-	return wss
-}
-
-type Ws struct {
-	Bg int `json:"bg"`
-	Cw []Cw `json:"cw"`
-}
-
-func (w *Ws)String()string  {
-	var wss string
-	for _,v:=range w.Cw{
-			wss+=v.W
-	}
-	return wss
-}
-
-type Cw struct {
-	Sc int `json:"sc"`
-	W string `json:"w"`
 }

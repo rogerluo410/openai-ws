@@ -25,27 +25,16 @@ var (
 
 type Server struct {
 	list       []*Client
-  processor  *Processor
 }
 
 func NewServer() *Server {
-	pp := NewProcessor()
-
-	// 启动处理器消息管道监听
-  go pp.Listen()
-
 	return &Server{
 		list: make([]*Client, initCap),
-		processor: pp,
 	}
 }
 
 func (s *Server) addClient(c *Client) {
 	s.list = append(s.list, c)
-
-	// 启动ws读写监听
-	go c.Conn.Reader(c, s.processor)
-	go c.Conn.Writer(c, s.processor)
 }
 
 func (s *Server) listenClient() {
@@ -100,6 +89,19 @@ func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	
 	//注册client
   wsConn := NewWsConn(ws)
-	client := NewClient(wsConn, provider[0], apiName[0], clientId[0], token[0], ws.RemoteAddr().String())
+  
+	cloudWs, err := ProviderWsMapper(provider[0], apiName[0])
+	if err != nil {
+		log.WithField("err", err).Error("Create cloud ws conn failed...")
+		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
+		return
+	}
+
+	cloudWsConn := NewWsConn(cloudWs)
+	log.WithFields(log.Fields{"服务提供商": provider[0], "api": apiName[0]}).Info("创建云端服务提供商连接串成功")
+
+	client := NewClient(wsConn, cloudWsConn, provider[0], apiName[0], clientId[0], token[0], ws.RemoteAddr().String())
 	s.addClient(client)
+	// 启动Client
+	client.Run()
 }
