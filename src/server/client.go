@@ -1,8 +1,11 @@
 package server
 
-// import (
-// 	"github.com/gorilla/websocket"
-// )
+import (
+	"sync"
+
+	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
+)
 
 type Client struct {
 	Conn           *WsConn           // ws
@@ -14,8 +17,8 @@ type Client struct {
 	ClientId       string            // 客户端id
 	Token          string            // 认证token
 	Address        string            // 客户端ip
-  Verified       bool              // token认证状态 
-	Connected      bool              // ws连接状态
+	Uuid           string            // Client唯一标识
+	Wg             *sync.WaitGroup   
 }
 
 func NewClient(
@@ -29,6 +32,7 @@ func NewClient(
 ) *Client {
   // Verify token from openai_backend
 
+	uuid := uuid.New()
 	return &Client{ Conn: conn,
 		CloudConn: cloudConn,
 		Provider: provider,
@@ -38,12 +42,22 @@ func NewClient(
 		Address: address,
 		Msg: make(chan interface{}),
 		CloudMsg: make(chan interface{}),
+		Uuid: uuid.String(),
+		Wg: &sync.WaitGroup{},
 	}
 }
 
-func (c *Client) Run() {
-	go c.Conn.Reader(c)
-	go c.Conn.Writer(c)
-	go c.CloudConn.CloudReader(c)
-	go c.CloudConn.CloudWriter(c)
+func (c *Client) Run(s *Server) {
+	go func() {
+    go c.Conn.Reader(c)
+		go c.Conn.Writer(c)
+		go c.CloudConn.CloudReader(c)
+		go c.CloudConn.CloudWriter(c)
+    
+		c.Wg.Wait()
+
+		// 全部读写websocket退出, 通知Server删除客户端变量
+		log.WithField("Client uuid", c.Uuid).Info("全部读写websocket退出, 将通知Server删除客户端")
+    s.Rmsg <- c.Uuid
+	}()
 }

@@ -1,20 +1,72 @@
 package server
 
 import (
+	"fmt"
+	"errors"
+
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 )
 
+var keys = []string{"序号", "服务名", "服务名中文说明", "API名", "API名中文说明"}
+var dict = []map[string]string{
+	map[string]string{"序号": "1", "服务名": "xunfei", "服务名中文说明": "讯飞", "API名": "voicedictation", "API名中文说明": "语音听写"},
+} 
+
+func MapDict() {
+  for _, d := range dict {
+    for _, k :=range keys {
+			fmt.Printf("%s: %s  |  ", k, d[k])
+		}
+		fmt.Println("\n-------------------")
+	}
+}
+
 func ProviderRequestMapper(i interface{}, c *Client) interface{} {
-	log.Info("开启路由请求映射...")
-	return XunfeiVoicedictationRequestParams(i) 
+	log.Info("查询路由请求映射...")
+  
+	switch c.Provider {
+	case "xunfei": 
+	  switch c.ApiName {
+		case "voicedictation":
+			return XunfeiVoicedictationRequestParams(i)
+		default:
+			return nil
+		}
+	default:
+		return nil
+	}
+	
 }
 
 func ProviderResponseMapper(i interface{}, c *Client) interface{} {
-	log.Info("开启路由响应映射...")
-	return XunfeiVoicedictationResponse(i) 
+	log.Info("查询路由响应映射...")
+
+	switch c.Provider {
+	case "xunfei": 
+		switch c.ApiName {
+		case "voicedictation":
+			return XunfeiVoicedictationResponse(i)
+		default:
+			return nil
+		}
+	default:
+		return nil
+	}
 }
 
 func ProviderWsMapper(provider string, apiName string) (*websocket.Conn, error) {
-	return XunfeiVoicedictationConn()
+	log.Info("查询云服务连接串...")
+
+	switch provider {
+		case "xunfei": 
+			switch apiName {
+			case "voicedictation":
+				return XunfeiVoicedictationConn()
+			default:
+				return nil, errors.New("讯飞服务未知的API名")
+			}
+		default:
+			return nil, errors.New("未知服务类型")
+		}
 }

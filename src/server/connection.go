@@ -35,14 +35,16 @@ func (w *WsConn) Close() {
   w.Conn.Close()
 }
 
-
 // 客户端连接处理
 func (w *WsConn) Reader(client *Client) {
 	defer func() {
 		log.Info("Client - Reader 协程退出...")
 		w.Conn.WriteMessage(websocket.CloseMessage, []byte{})
-		w.Conn.Close()
-	} ()
+		w.Close()
+		client.Wg.Done()
+	}()
+
+	client.Wg.Add(1)
 
 	w.Conn.SetReadLimit(1024 * 1024)
 	w.Conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -83,11 +85,13 @@ func (w *WsConn) Reader(client *Client) {
 
 func (w *WsConn) Writer(client *Client) {
 	pingTicker := time.NewTicker(pingPeriod)
+	client.Wg.Add(1)
 
 	defer func() {
 		log.Info("Client - Writer 协程退出...")
 		pingTicker.Stop()
-		w.Conn.Close()
+		w.Close()
+		client.Wg.Done()
 	}()
 
 	for {
@@ -113,9 +117,11 @@ func (w *WsConn) CloudReader(client *Client) {
 	defer func() {
 		log.Info("Cloud - Reader 协程退出...")
 		w.Conn.WriteMessage(websocket.CloseMessage, []byte{})
-		w.Conn.Close()
+		w.Close()
+		client.Wg.Done()
 	} ()
 
+	client.Wg.Add(1)
 	w.Conn.SetReadLimit(1024 * 1024)
 	w.Conn.SetReadDeadline(time.Now().Add(pongWait))
 
@@ -157,12 +163,14 @@ func (w *WsConn) CloudReader(client *Client) {
 }
 
 func (w *WsConn) CloudWriter(client *Client) {
+	client.Wg.Add(1)
 	pingTicker := time.NewTicker(pingPeriod)
-
+	
 	defer func() {
 		log.Info("Cloud - Writer 协程退出...")
 		pingTicker.Stop()
-		w.Conn.Close()
+		w.Close()
+		client.Wg.Done()
 	}()
 
 	for {

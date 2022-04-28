@@ -41,10 +41,10 @@ func main() {
 	//握手并建立websocket 连接
 	conn, resp, err := d.Dial(hostUrl, nil)
 	if err != nil {
-		panic(readResp(resp)+err.Error())
+		panic(readResp(resp) + err.Error())
 		return
-	}else if resp.StatusCode !=101{
-		panic(readResp(resp)+err.Error())
+	}else if resp.StatusCode != 101{
+		panic(readResp(resp) + err.Error())
 	}
 	//打开音频文件
 	var frameSize = 1280              //每一帧的音频大小
@@ -54,84 +54,83 @@ func main() {
 	defer conn.Close()
 	var status = 0
 	go func() {
-			//	start:
-			audioFile, err := os.Open(file)
+		//	start:
+		audioFile, err := os.Open(file)
+		if err != nil {
+			panic(err)
+		}
+		status = STATUS_FIRST_FRAME      //音频的状态信息，标识音频是第一帧，还是中间帧、最后一帧
+		var buffer = make([]byte, frameSize)
+		for {
+			len, err := audioFile.Read(buffer)
 			if err != nil {
+				if err == io.EOF { //文件读取完了，改变status = STATUS_LAST_FRAME
+					status = STATUS_LAST_FRAME
+				} else {
 					panic(err)
+				}
 			}
-			status = STATUS_FIRST_FRAME      //音频的状态信息，标识音频是第一帧，还是中间帧、最后一帧
-			var buffer = make([]byte, frameSize)
-			for {
-				len, err := audioFile.Read(buffer)
-				if err != nil {
-						if err == io.EOF { //文件读取完了，改变status = STATUS_LAST_FRAME
-								status = STATUS_LAST_FRAME
-						} else {
-								panic(err)
-						}
+			select {
+			case <-ctx.Done():
+				fmt.Println("session end ---")
+				return
+			default:
+			}
+			switch status {
+			case STATUS_FIRST_FRAME: //发送第一帧音频，带business 参数
+				frameData := map[string]interface{}{
+						"common": map[string]interface{}{
+								"app_id": appid, //appid 必须带上，只需第一帧发送
+						},
+						"business": map[string]interface{}{ //business 参数，只需一帧发送
+								"language":"zh_cn",
+								"domain":"iat",
+								"accent":"mandarin",
+						},
+						"data": map[string]interface{}{
+								"status":    STATUS_FIRST_FRAME,
+								"format":    "audio/L16;rate=16000",
+								"audio":     base64.StdEncoding.EncodeToString(buffer[:len]),
+								"encoding":  "raw",
+						},
 				}
-				select {
-				case <-ctx.Done():
-						fmt.Println("session end ---")
-						return
-				default:
+				fmt.Println("send first")
+				// conn.WriteJSON(frameData)
+				str, _ := json.Marshal(frameData)
+				conn.WriteMessage(websocket.TextMessage, str)
+				status = STATUS_CONTINUE_FRAME
+			case STATUS_CONTINUE_FRAME:
+				frameData := map[string]interface{}{
+						"data": map[string]interface{}{
+								"status":    STATUS_CONTINUE_FRAME,
+								"format":    "audio/L16;rate=16000",
+								"audio":     base64.StdEncoding.EncodeToString(buffer[:len]),
+								"encoding":  "raw",
+						},
 				}
-				switch status {
-				case STATUS_FIRST_FRAME: //发送第一帧音频，带business 参数
-					frameData := map[string]interface{}{
-							"common": map[string]interface{}{
-									"app_id": appid, //appid 必须带上，只需第一帧发送
-							},
-							"business": map[string]interface{}{ //business 参数，只需一帧发送
-									"language":"zh_cn",
-									"domain":"iat",
-									"accent":"mandarin",
-							},
-							"data": map[string]interface{}{
-									"status":    STATUS_FIRST_FRAME,
-									"format":    "audio/L16;rate=16000",
-									"audio":     base64.StdEncoding.EncodeToString(buffer[:len]),
-									"encoding":  "raw",
-							},
-					}
-					fmt.Println("send first")
-					// conn.WriteJSON(frameData)
-					str, _ := json.Marshal(frameData)
-					conn.WriteMessage(websocket.TextMessage, str)
-					status = STATUS_CONTINUE_FRAME
-				case STATUS_CONTINUE_FRAME:
-					frameData := map[string]interface{}{
-							"data": map[string]interface{}{
-									"status":    STATUS_CONTINUE_FRAME,
-									"format":    "audio/L16;rate=16000",
-									"audio":     base64.StdEncoding.EncodeToString(buffer[:len]),
-									"encoding":  "raw",
-							},
-					}
-					// conn.WriteJSON(frameData)
-					str, _ := json.Marshal(frameData)
-					conn.WriteMessage(websocket.TextMessage, str)
-				case STATUS_LAST_FRAME:
-					frameData := map[string]interface{}{
-							"data": map[string]interface{}{
-									"status":    STATUS_LAST_FRAME,
-									"format":    "audio/L16;rate=16000",
-									"audio":     base64.StdEncoding.EncodeToString(buffer[:len]),
-									"encoding":  "raw",
-							},
-					}
-					// conn.WriteJSON(frameData)
-					str, _ := json.Marshal(frameData)
-					conn.WriteMessage(websocket.TextMessage, str)
-					fmt.Println("send last")
-					return
-					//	goto start
+				// conn.WriteJSON(frameData)
+				str, _ := json.Marshal(frameData)
+				conn.WriteMessage(websocket.TextMessage, str)
+			case STATUS_LAST_FRAME:
+				frameData := map[string]interface{}{
+						"data": map[string]interface{}{
+								"status":    STATUS_LAST_FRAME,
+								"format":    "audio/L16;rate=16000",
+								"audio":     base64.StdEncoding.EncodeToString(buffer[:len]),
+								"encoding":  "raw",
+						},
 				}
-
-				//模拟音频采样间隔
-				time.Sleep(intervel)
+				// conn.WriteJSON(frameData)
+				str, _ := json.Marshal(frameData)
+				conn.WriteMessage(websocket.TextMessage, str)
+				fmt.Println("send last")
+				return
+				//	goto start
 			}
 
+			//模拟音频采样间隔
+			time.Sleep(intervel)
+		}
 	}()
 
 	//获取返回的数据

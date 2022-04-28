@@ -1,9 +1,9 @@
 package server
 
 import (
-	_ "io"
 	"net/http"
 	"time"
+	"context"
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
@@ -24,29 +24,55 @@ var (
 )
 
 type Server struct {
-	list       []*Client
+	list         []*Client
+	indexes      map[string]int  // 客户端位置索引
+	Rmsg          chan string    // 接收客户端退出消息
 }
 
 func NewServer() *Server {
 	return &Server{
-		list: make([]*Client, initCap),
+		list: make([]*Client, 0, initCap),
+    indexes: make(map[string]int),
+		Rmsg: make(chan string),
 	}
 }
 
 func (s *Server) addClient(c *Client) {
 	s.list = append(s.list, c)
+	s.indexes[c.Uuid] = len(s.list) - 1
 }
 
-func (s *Server) listenClient() {
+func (s *Server) removeClient(uuid string) {
+	index := s.indexes[uuid]
+	if index >= 0 {
+		s.list = append(s.list[:index], s.list[index+1:]...)
+	}
 }
 
-func (s *Server) ClientLength() int {
+func (s *Server) Listen(ctx context.Context) {
+  go func() {
+    for {
+			select {
+			// 每隔10分钟查看一次客户数量
+			case <- time.After(10 * time.Minute):
+				log.WithField("Num", s.ActiveClients()).Info("当前活跃用户数")
+			case m := <- s.Rmsg:
+        s.removeClient(m)
+			case <- ctx.Done():
+				log.Info("Server listen canceled...")
+				return
+			}
+		}
+	}()
+}
+
+func (s *Server) ActiveClients() int {
   return len(s.list)
 }
 
 // handleWebsocket connection.
 func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
-	log.Info("验证Websocket连接串...")
+	log.Info("接收到请求, 开始验证Websocket连接串...")
 
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -77,7 +103,9 @@ func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("Websocket 连接成功...")
+	// Verify token from openai_backend
+
+	log.Info("路由参数解析成功并且token认证成功, 将升级为Websocket服务...")
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -98,10 +126,10 @@ func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cloudWsConn := NewWsConn(cloudWs)
-	log.WithFields(log.Fields{"服务提供商": provider[0], "api": apiName[0]}).Info("创建云端服务提供商连接串成功")
+	log.WithFields(log.Fields{"服务提供商": provider[0], "api": apiName[0]}).Info("创建云端服务提供商Websocket连接串成功")
 
 	client := NewClient(wsConn, cloudWsConn, provider[0], apiName[0], clientId[0], token[0], ws.RemoteAddr().String())
 	s.addClient(client)
 	// 启动Client
-	client.Run()
+	client.Run(s)
 }
