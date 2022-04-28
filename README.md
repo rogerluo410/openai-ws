@@ -1,6 +1,6 @@
-# openai_ws
+# openai-ws
 
-代理服务提供商的WebSocket服务  
+代理服务供应商的WebSocket服务  
 
   * 输入为结构化数据字节流, 数据结构参考具体服务提供商文档。  
   * 输出为结构化数据字节流, 数据结构参考具体服务提供商文档。  
@@ -10,10 +10,10 @@
   - 运行  
   `./openai-ws`  or `./openai-ws -p 8081`  
 
-  - 查看提供服务列表  
+  - 查看服务供应商提供的服务列表  
   `./openai-ws -m`  
 
-# 服务提供商功能测试  
+# API功能测试  
   
   - 讯飞 语音听写  
   `cd test && ./xufeiVoiceDictationTest` 
