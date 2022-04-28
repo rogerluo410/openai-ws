@@ -54,8 +54,8 @@ func (c *Client) Run(s *Server) {
 		go c.CloudConn.CloudReader(c)
 		go c.CloudConn.CloudWriter(c)
     
+    log.Info("阻塞, 等待读写协程结束...")
 		c.Wg.Wait()
-
 		// 全部读写websocket退出, 通知Server删除客户端变量
 		log.WithField("Client uuid", c.Uuid).Info("全部读写websocket退出, 将通知Server删除客户端")
     s.Rmsg <- c.Uuid
