@@ -1,16 +1,16 @@
 package main
 
 import (
-    "fmt"
-    "time"
-    "encoding/base64"
-    "io/ioutil"
-    "github.com/gorilla/websocket"
-    "os"
-    "io"
-    "net/http"
-    "encoding/json"
-    "context"
+	"fmt"
+	"time"
+	"encoding/base64"
+	"io/ioutil"
+	"github.com/gorilla/websocket"
+	"os"
+	"io"
+	"net/http"
+	"encoding/json"
+	"context"
 )
 /**
  * 语音听写流式 WebAPI 接口调用示例 接口文档（必看）：https://doc.xfyun.cn/rest_api/语音听写（流式版）.html
@@ -21,7 +21,7 @@ import (
  * @author iflytek
  */
 var (
-	hostUrl   = "ws://localhost:8080/ws?provider=123&api_name=2222&client_id=321312&token=dsds"
+	hostUrl   = "ws://localhost:8080/ws?provider=xunfei&api_name=voicedictation&client_id=321312&token=dsds"
 	appid     = "b55b61a2"
 	apiSecret = "M2FhNGE1ZjE1Nzg1ODQ3MGRkZTkyZWFh"
 	apiKey    = "671fc248f8b264ee237a0c29ab624552"
@@ -35,6 +35,7 @@ const (
 )
 
 func main() {
+	st:=time.Now()
 	d := websocket.Dialer{
 		HandshakeTimeout: 5 * time.Second,
 	}
@@ -137,13 +138,25 @@ func main() {
 	//var decoder Decoder
 	for {
 			fmt.Println("读消息...")
-			// var resp = RespData{}
+			var resp = RespData{}
 			_,msg,err := conn.ReadMessage()
 			if err != nil {
 					fmt.Println("read message error:", err)
 					break
 			}
-			fmt.Println("处理读到的消息:" + string(msg))
+			fmt.Println("读到的消息:" + string(msg))
+
+			json.Unmarshal(msg, &resp)
+			fmt.Println(resp.Data.Result.String(),resp.Sid)
+
+			if resp.Code!=0{
+				fmt.Println(resp.Code,resp.Message,time.Since(st))
+				return
+			}
+			if resp.Data.Status == 2{
+				fmt.Println(resp.Code,resp.Message,time.Since(st))
+				break
+			}
 	}
 
 	time.Sleep(1 * time.Second)

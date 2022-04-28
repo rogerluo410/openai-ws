@@ -78,7 +78,7 @@ func (w *WsConn) Reader(client *Client) {
 		}
 
 		// 写入管道
-		l.WithFields(log.Fields{ "Msg": string(msg)}).Info("客户端发送数据, 格式化后传入云端")
+		l.WithFields(log.Fields{ "Msg": string(msg)}).Info("客户端发送数据, 结构化后传入云端服务")
 		client.Msg <- string(msg)
 	}
 }
@@ -165,7 +165,7 @@ func (w *WsConn) CloudReader(client *Client) {
 func (w *WsConn) CloudWriter(client *Client) {
 	client.Wg.Add(1)
 	pingTicker := time.NewTicker(pingPeriod)
-	
+
 	defer func() {
 		log.Info("Cloud - Writer 协程退出...")
 		pingTicker.Stop()
