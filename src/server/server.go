@@ -2,6 +2,8 @@ package server
 
 import (
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 	"context"
 
@@ -28,14 +30,16 @@ type Server struct {
 	indexes      map[string]int  // 客户端位置索引
 	Rmsg         chan string     // 接收客户端退出消息
 	MaxCnt       uint            // 最大客户连接数
+	VerfiyUrl    string          // 认证服务器地址
 }
 
-func NewServer(maxClientCnt uint) *Server {
+func NewServer(tokenUrl string, maxClientCnt uint) *Server {
 	return &Server{
 		list: make([]*Client, 0, initCap),
     indexes: make(map[string]int),
 		Rmsg: make(chan string),
 		MaxCnt: maxClientCnt,
+		VerfiyUrl: tokenUrl,
 	}
 }
 
@@ -72,6 +76,29 @@ func (s *Server) ActiveClients() int {
   return len(s.list)
 }
 
+func (s *Server) VerifyToken(token string) bool {
+  apiUrl := s.VerfiyUrl
+	resource := "/api/v1/verfiy_token"
+	data := url.Values{}
+	data.Set("token", token)
+
+	u, _ := url.ParseRequestURI(apiUrl)
+	u.Path = resource
+	urlStr := u.String() // "https://xxxx.com/api/v1/verfiy_token"
+
+	client := &http.Client{}
+	r, _ := http.NewRequest(http.MethodPost, urlStr, strings.NewReader(data.Encode())) // URL-encoded payload
+	r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, _ := client.Do(r)
+	log.WithField("status", resp.Status).Info("token验证结果...")
+  if "204 No Content" == resp.Status {
+		return true
+	} else {
+		return false
+	}
+}
+
 // handleWebsocket connection.
 func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	if uint(s.ActiveClients()) >= s.MaxCnt {
@@ -105,8 +132,12 @@ func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify token from openai_backend
-
-	log.Info("路由参数解析成功并且token认证成功, 将升级为Websocket服务...")
+	if s.VerifyToken(token[0]) {
+		log.Info("路由参数解析成功并且token认证成功, 将升级为Websocket服务...")
+	} else {
+		http.Error(w, "Token is invalid", http.StatusForbidden)
+    return
+	}
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

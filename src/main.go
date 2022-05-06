@@ -16,7 +16,7 @@ var (
 	version = "1.0.1"
 	maxActiveClientCnt = 10000
 	port = GetEnvDefault("OAWS_PORT", "8080")
-	openaiBackendUrl = GetEnvDefault("OPENAI_BACKEND_URL", "localhost:3001")
+	openaiBackendUrl = GetEnvDefault("OPENAI_BACKEND_URL", "http://localhost:3001")
 )
 
 func GetEnvDefault(key, defVal string) string {
@@ -52,8 +52,8 @@ func main() {
 	var usage = `使用: openai-ws [options...]
 
 		Options:
-			-p  指定服务端口, 默认8080
-			-t  认证服务器地址, 默认localhost:3001
+			-p  指定服务端口, 默认为8080
+			-t  认证服务器地址, 默认为http://localhost:3001
 			-c  设置最大客户连接数, 默认最大10000
 			-m  打印服务及API名列表
 			-v  当前版本号
@@ -72,7 +72,7 @@ func main() {
 
 	// 启动服务
 	log.WithFields(log.Fields{"Openai Ws Port": portFlag, "Openai Backend Url": tokenFlag}).Info("启动服务...")
-	serverInstance := server.NewServer(maxFlag)
+	serverInstance := server.NewServer(tokenFlag, maxFlag)
 	ctx, _:=context.WithCancel(context.Background())
 	serverInstance.Listen(ctx)
 
