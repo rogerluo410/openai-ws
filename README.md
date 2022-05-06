@@ -23,6 +23,6 @@
 
 # TODO
 
-  - ～～用户OpenAI Backend认证～～  
-  - ～～自动化部署～～   
+  - ~~用户OpenAI Backend认证~~  
+  - ~~自动化部署~~  
   - 压力测试 
