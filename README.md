@@ -19,7 +19,10 @@
 # API功能测试  
   
   - 讯飞 语音听写  
-  `cd test && ./xufeiVoiceDictationTest` or `./xufeiVoiceDictationTest -t xxxx -a http://xxx.com` 指定token和代理ws服务地址    
+  `cd test && ./xufeiVoiceDictationTest` or `./xufeiVoiceDictationTest -t xxxx -a http://xxx.com` 指定token和代理ws服务地址  
+
+# 部署  
+  `make install`      
 
 # TODO
 
