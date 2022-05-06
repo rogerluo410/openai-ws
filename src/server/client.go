@@ -2,6 +2,7 @@ package server
 
 import (
 	"sync"
+	"context"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -26,7 +27,6 @@ func NewClient(
 	cloudConn *WsConn,
 	provider string,
 	apiName string,
-	clientId string, 
 	token string, 
 	address string,
 ) *Client {
@@ -37,7 +37,6 @@ func NewClient(
 		CloudConn: cloudConn,
 		Provider: provider,
 		ApiName: apiName,
-		ClientId: clientId,
 		Token: token,
 		Address: address,
 		Msg: make(chan interface{}),
@@ -49,10 +48,11 @@ func NewClient(
 
 func (c *Client) Run(s *Server) {
 	go func() {
-    go c.Conn.Reader(c)
-		go c.Conn.Writer(c)
-		go c.CloudConn.CloudReader(c)
-		go c.CloudConn.CloudWriter(c)
+		ctx, cancelFunc := context.WithCancel(context.Background())
+    go c.Conn.Reader(c, ctx, cancelFunc)
+		go c.Conn.Writer(c, ctx)
+		go c.CloudConn.CloudReader(c, ctx)
+		go c.CloudConn.CloudWriter(c, ctx)
     
     log.Info("阻塞, 等待读写协程结束...")
 		c.Wg.Wait()

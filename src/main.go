@@ -13,6 +13,8 @@ import (
 )
 
 var (
+	version = "1.0.1"
+	maxActiveClientCnt = 10000
 	port = GetEnvDefault("OAWS_PORT", "8080")
 	openaiBackendUrl = GetEnvDefault("OPENAI_BACKEND_URL", "localhost:3001")
 )
@@ -32,19 +34,45 @@ func main() {
 	var tokenFlag string
   flag.StringVar(&tokenFlag, "t",  openaiBackendUrl, "token认证服务地址")
 
+	var maxFlag uint
+	flag.UintVar(&maxFlag, "c", uint(maxActiveClientCnt), "最大客户连接数")
+
 	mapFlag := flag.Bool("m", false, "打印服务及API名")
+	helpFlag := flag.Bool("h", false, "使用帮助")
+	versionFlag := flag.Bool("v", false, "当前版本")
 
 	flag.Parse()
 
 	if *mapFlag {
 		fmt.Println("打印服务及API名:")
 		server.MapDict()
-		return
+		os.Exit(1)
+	}
+
+	var usage = `使用: openai-ws [options...]
+
+		Options:
+			-p  指定服务端口, 默认8080
+			-t  认证服务器地址, 默认localhost:3001
+			-c  设置最大客户连接数, 默认最大10000
+			-m  打印服务及API名列表
+			-v  当前版本号
+			-h  使用帮助文档
+	`
+
+	if *helpFlag {
+		fmt.Println(usage)
+		os.Exit(1)
+	}
+
+	if *versionFlag {
+		fmt.Println(version)
+		os.Exit(1)
 	}
 
 	// 启动服务
 	log.WithFields(log.Fields{"Openai Ws Port": portFlag, "Openai Backend Url": tokenFlag}).Info("启动服务...")
-	serverInstance := server.NewServer()
+	serverInstance := server.NewServer(maxFlag)
 	ctx, _:=context.WithCancel(context.Background())
 	serverInstance.Listen(ctx)
 

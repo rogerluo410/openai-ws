@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"encoding/json"
 	"context"
+	"flag"
 )
 /**
  * 语音听写流式 WebAPI 接口调用示例 接口文档（必看）：https://doc.xfyun.cn/rest_api/语音听写（流式版）.html
@@ -21,10 +22,10 @@ import (
  * @author iflytek
  */
 var (
-	hostUrl   = "ws://localhost:8080/ws?provider=xunfei&api_name=voicedictation&client_id=321312&token=dsds"
+	hostUrl   = "ws://localhost:8080/ws"
+	queryStr  = "provider=xunfei&api_name=voicedictation"
+	token     = "1234"
 	appid     = "b55b61a2"
-	apiSecret = "M2FhNGE1ZjE1Nzg1ODQ3MGRkZTkyZWFh"
-	apiKey    = "671fc248f8b264ee237a0c29ab624552"
 	file      = "xufeiVoiceDictationTest_16k_10.pcm" //请填写您的音频文件路径
 )
 
@@ -35,12 +36,23 @@ const (
 )
 
 func main() {
+	var address string
+  flag.StringVar(&address, "a",  hostUrl, "代理ws服务地址")
+
+	var tokenSet string
+  flag.StringVar(&tokenSet, "t",  token, "token")
+
+	flag.Parse()
+
 	st:=time.Now()
 	d := websocket.Dialer{
 		HandshakeTimeout: 5 * time.Second,
 	}
 	//握手并建立websocket 连接
-	conn, resp, err := d.Dial(hostUrl, nil)
+	url := address+"?"+queryStr+"&token="+tokenSet
+	fmt.Println("Connect to ", url)
+
+	conn, resp, err := d.Dial(url, nil)
 	if err != nil {
 		panic(readResp(resp) + err.Error())
 		return

@@ -26,14 +26,16 @@ var (
 type Server struct {
 	list         []*Client
 	indexes      map[string]int  // 客户端位置索引
-	Rmsg          chan string    // 接收客户端退出消息
+	Rmsg         chan string     // 接收客户端退出消息
+	MaxCnt       uint            // 最大客户连接数
 }
 
-func NewServer() *Server {
+func NewServer(maxClientCnt uint) *Server {
 	return &Server{
 		list: make([]*Client, 0, initCap),
     indexes: make(map[string]int),
 		Rmsg: make(chan string),
+		MaxCnt: maxClientCnt,
 	}
 }
 
@@ -72,6 +74,11 @@ func (s *Server) ActiveClients() int {
 
 // handleWebsocket connection.
 func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
+	if uint(s.ActiveClients()) >= s.MaxCnt {
+    http.Error(w, "Up to max connections", http.StatusForbidden)
+		return
+	}
+
 	log.Info("接收到请求, 开始验证Websocket连接串...")
 
 	if r.Method != "GET" {
@@ -88,12 +95,6 @@ func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	apiName := r.URL.Query()["api_name"]
 	if len(apiName) == 0 {
 		http.Error(w, "No api name error", http.StatusMethodNotAllowed)
-		return
-	}
-
-	clientId := r.URL.Query()["client_id"]
-	if len(clientId) == 0 {
-		http.Error(w, "No client id error", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -128,7 +129,7 @@ func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	cloudWsConn := NewWsConn(cloudWs)
 	log.WithFields(log.Fields{"服务提供商": provider[0], "api": apiName[0]}).Info("创建云端服务提供商Websocket连接串成功")
 
-	client := NewClient(wsConn, cloudWsConn, provider[0], apiName[0], clientId[0], token[0], ws.RemoteAddr().String())
+	client := NewClient(wsConn, cloudWsConn, provider[0], apiName[0], token[0], ws.RemoteAddr().String())
 	s.addClient(client)
 	// 启动Client
 	client.Run(s)
