@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	version = "1.0.1"
+	version = "1.0.2"
 	maxActiveClientCnt = 10000
 	port = GetEnvDefault("OAWS_PORT", "8080")
 	openaiBackendUrl = GetEnvDefault("OPENAI_BACKEND_URL", "http://localhost:3001")
@@ -37,14 +37,14 @@ func main() {
 	var maxFlag uint
 	flag.UintVar(&maxFlag, "c", uint(maxActiveClientCnt), "最大客户连接数")
 
-	mapFlag := flag.Bool("m", false, "打印服务及API名")
+	mapFlag := flag.Bool("m", false, "打印服务及API列表")
 	helpFlag := flag.Bool("h", false, "使用帮助")
 	versionFlag := flag.Bool("v", false, "当前版本")
 
 	flag.Parse()
 
 	if *mapFlag {
-		fmt.Println("打印服务及API名:")
+		fmt.Println("服务及API列表:")
 		server.MapDict()
 		os.Exit(1)
 	}
