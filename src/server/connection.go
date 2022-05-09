@@ -1,11 +1,11 @@
 package server
 
 import (
-	"io"
-	"time"
-	"errors"
-	"reflect"
 	"context"
+	"errors"
+	"io"
+	"reflect"
+	"time"
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
@@ -20,7 +20,7 @@ const (
 
 	// Send pings to client with this period. Must be less than pongWait.
 	pingPeriod = (pongWait * 9) / 10
- 
+
 	// Max pong message numbers to client.
 	maxPongCnt = 10
 )
@@ -36,7 +36,7 @@ func NewWsConn(conn *websocket.Conn) *WsConn {
 }
 
 func (w *WsConn) Close() {
-  w.Conn.Close()
+	w.Conn.Close()
 }
 
 // 客户端连接处理
@@ -47,14 +47,14 @@ func (w *WsConn) Reader(client *Client, ctx context.Context, cancelFunc context.
 		w.Close()
 		client.Wg.Done()
 	}()
-  
+
 	pongCnt := 0
 	client.Wg.Add(1)
 
 	w.Conn.SetReadLimit(1024 * 1024)
 	w.Conn.SetReadDeadline(time.Now().Add(pongWait))
 
-	w.Conn.SetPongHandler(func(string) error { 
+	w.Conn.SetPongHandler(func(string) error {
 		w.Conn.SetReadDeadline(time.Now().Add(pongWait))
 		w.Conn.WriteMessage(websocket.PongMessage, []byte{})
 		pongCnt++
@@ -62,22 +62,22 @@ func (w *WsConn) Reader(client *Client, ctx context.Context, cancelFunc context.
 			log.Info("Client - Reader 协程达到最大pong包发送次数, 将关闭协程")
 			cancelFunc()
 		}
-		return nil 
+		return nil
 	})
 
 	w.Conn.SetCloseHandler(func(code int, text string) error {
 		log.WithFields(log.Fields{"code": code, "text": text}).Info("Client - Reader 收到客户端关闭消息")
 		w.Conn.WriteMessage(websocket.CloseMessage, []byte{})
-    return nil
+		return nil
 	})
 
 	for {
 		select {
-		case <- ctx.Done():
+		case <-ctx.Done():
 			return
 		default:
-      _, msg, err := w.Conn.ReadMessage()
-			l := log.WithFields(log.Fields{ "Msg": string(msg), "Err": err})
+			_, msg, err := w.Conn.ReadMessage()
+			l := log.WithFields(log.Fields{"Msg": string(msg), "Err": err})
 
 			if err != nil {
 				if websocket.IsCloseError(err, websocket.CloseGoingAway) || err == io.EOF {
@@ -92,7 +92,7 @@ func (w *WsConn) Reader(client *Client, ctx context.Context, cancelFunc context.
 			}
 
 			// 写入管道
-			l.WithFields(log.Fields{ "Msg": string(msg)}).Info("客户端发送数据, 结构化后传入云端服务")
+			l.WithFields(log.Fields{"Msg": string(msg)}).Info("客户端发送数据, 结构化后传入云端服务")
 			client.Msg <- string(msg)
 		}
 	}
@@ -111,9 +111,9 @@ func (w *WsConn) Writer(client *Client, ctx context.Context) {
 
 	for {
 		select {
-		case <- ctx.Done():
+		case <-ctx.Done():
 			return
-		case <- pingTicker.C:
+		case <-pingTicker.C:
 			log.Info("Client - Writer 发送心跳包...")
 			w.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 
@@ -122,9 +122,9 @@ func (w *WsConn) Writer(client *Client, ctx context.Context) {
 				log.Error("Client - Writer 发送心跳包失败")
 				return
 			}
-		case msg := <- client.CloudMsg:
+		case msg := <-client.CloudMsg:
 			str1, _ := msg.(string)
-			w.Conn.WriteMessage(websocket.TextMessage, []byte(str1))				
+			w.Conn.WriteMessage(websocket.TextMessage, []byte(str1))
 		}
 	}
 }
@@ -142,25 +142,25 @@ func (w *WsConn) CloudReader(client *Client, ctx context.Context) {
 	w.Conn.SetReadLimit(1024 * 1024)
 	w.Conn.SetReadDeadline(time.Now().Add(pongWait))
 
-	w.Conn.SetPongHandler(func(string) error { 
+	w.Conn.SetPongHandler(func(string) error {
 		w.Conn.SetReadDeadline(time.Now().Add(pongWait))
 		w.Conn.WriteMessage(websocket.PongMessage, []byte{})
-		return nil 
+		return nil
 	})
 
 	w.Conn.SetCloseHandler(func(code int, text string) error {
 		log.WithFields(log.Fields{"code": code, "text": text}).Info("Cloud - Reader 收到客户端关闭消息")
 		w.Conn.WriteMessage(websocket.CloseMessage, []byte{})
-    return nil
+		return nil
 	})
 
 	for {
 		select {
-		case <- ctx.Done():
+		case <-ctx.Done():
 			return
 		default:
 			_, msg, err := w.Conn.ReadMessage()
-			l := log.WithFields(log.Fields{ "Msg": string(msg), "Err": err})
+			l := log.WithFields(log.Fields{"Msg": string(msg), "Err": err})
 
 			if err != nil {
 				if websocket.IsCloseError(err, websocket.CloseGoingAway) || err == io.EOF {
@@ -195,9 +195,9 @@ func (w *WsConn) CloudWriter(client *Client, ctx context.Context) {
 
 	for {
 		select {
-		case <- ctx.Done():
+		case <-ctx.Done():
 			return
-		case <- pingTicker.C:
+		case <-pingTicker.C:
 			log.Info("Cloud - Writer 发送心跳包...")
 			w.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 
@@ -206,7 +206,7 @@ func (w *WsConn) CloudWriter(client *Client, ctx context.Context) {
 				log.Error("Cloud - Writer 发送心跳包失败")
 				return
 			}
-		case msg := <- client.Msg:
+		case msg := <-client.Msg:
 			var err error
 			if m := ProviderRequestMapper(msg, client); m != nil {
 				v := reflect.ValueOf(m)
@@ -230,9 +230,10 @@ func (w *WsConn) CloudWriter(client *Client, ctx context.Context) {
 					}).Error("Cloud - Writer Websocket写消息失败, 将关闭websocket连接")
 					return
 				}
+
+				// 休眠一秒钟
+				time.Sleep(1 * time.Second)
 			}
 		}
 	}
 }
-
-

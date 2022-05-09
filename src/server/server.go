@@ -51,6 +51,7 @@ func (s *Server) addClient(c *Client) {
 func (s *Server) removeClient(uuid string) {
 	index := s.indexes[uuid]
 	if index >= 0 {
+		s.list[index].Close()
 		s.list = append(s.list[:index], s.list[index+1:]...)
 	}
 }

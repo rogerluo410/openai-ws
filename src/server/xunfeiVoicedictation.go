@@ -108,10 +108,10 @@ func XunfeiVoicedictationConn() (*websocket.Conn, error) {
 	//握手并建立websocket连接
 	conn, resp, err := d.Dial(assembleAuthUrl(hostUrl, apiKey, apiSecret), nil)
 	if err != nil {
-		panic(readResp(resp) + err.Error())
+		// panic(readResp(resp) + err.Error())
 		return nil, err
 	} else if resp.StatusCode != 101 {
-		panic(readResp(resp) + err.Error())
+		// panic(readResp(resp) + err.Error())
 		return nil, err
 	}
 
