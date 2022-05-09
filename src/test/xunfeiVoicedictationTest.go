@@ -1,3 +1,4 @@
+// 讯飞平台 - 语音听写 - 功能测试
 package main
 
 import (
