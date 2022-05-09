@@ -33,6 +33,12 @@ func ProviderRequestMapper(i interface{}, c *Client) interface{} {
 	  switch c.ApiName {
 		case "voicedictation":
 			return XunfeiVoicedictationRequestParams(i)
+		case "tts":
+			return XunfeiTtsRequestParams(i)
+		case "lse":
+			return XunfeiLseRequestParams(i)
+		case "rtasr":
+			return XunfeiRtasrRequestParams(i)
 		default:
 			return nil
 		}
@@ -66,6 +72,12 @@ func ProviderWsMapper(provider string, apiName string) (*websocket.Conn, error) 
 			switch apiName {
 			case "voicedictation":
 				return XunfeiVoicedictationConn()
+			case "tts":
+				return XunfeiTtsConn()
+			case "lse":
+				return XunfeiLseConn()
+			case "rtasr":
+				return XunfeiRtasrConn()
 			default:
 				return nil, errors.New("讯飞服务未知的API名")
 			}

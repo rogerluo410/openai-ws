@@ -1,4 +1,5 @@
 // 讯飞平台 - 语音听写
+// 文档: https://www.xfyun.cn/doc/asr/voicedictation/API.html#%E6%8E%A5%E5%8F%A3%E8%B0%83%E7%94%A8%E6%B5%81%E7%A8%8B
 package server
 
 import (
@@ -19,18 +20,13 @@ import (
 )
 
 var (
-	hostUrl   = "wss://iat-api.xfyun.cn/v2/iat"
-  appid     = "b55b61a2"
-  apiSecret = "M2FhNGE1ZjE1Nzg1ODQ3MGRkZTkyZWFh"
-	apiKey    = "671fc248f8b264ee237a0c29ab624552"	
+	vdHostUrl   = "wss://iat-api.xfyun.cn/v2/iat"
+  Appid     = "b55b61a2"
+  ApiSecret = "M2FhNGE1ZjE1Nzg1ODQ3MGRkZTkyZWFh"
+	ApiKey    = "671fc248f8b264ee237a0c29ab624552"	
 )
 
-const (
-	STATUS_FIRST_FRAME    = 0
-	STATUS_CONTINUE_FRAME = 1
-	STATUS_LAST_FRAME     = 2
-)
-
+// 发送数据包格式
 type Frame struct {
   Data FrameData `json:"data"`
 	Common CommonData `json:"common"`
@@ -45,6 +41,16 @@ type BusinessData struct {
   Language string `json:"language"`
 	Domain string `json:"domain"`
 	Accent string `json:"accent"`
+	Vad_eos int `json:"vad_eos"`
+	Dwa string `json:"dwa"`
+	Pd string `json:"pd"`
+	Ptt int `json:"ptt"`
+	Rlang string `json:"rlang"`
+	Vinfo int `json:"vinfo"`
+	Nunum int `json:"nunum"`
+	Speex_size int `json:"speex_size"`
+	Nbest int `json:"nbest"`
+	Wbest int `json:"wbest"`
 }
 
 type FrameData struct {
@@ -54,6 +60,7 @@ type FrameData struct {
 	Status 	   int `json:"status"`
 }
 
+// 接收数据包格式
 type RespData struct {
 	Sid 	string `json:"sid"`
 	Code    int    `json:"code"`
@@ -100,13 +107,31 @@ type Cw struct {
 	W string `json:"w"`
 }
 
+// 讯飞通用连接
+func  XunfeiCommonConn(hostUrlTmp string) (*websocket.Conn, error) {
+	d := websocket.Dialer{
+		HandshakeTimeout: 5 * time.Second,
+	}
+	//握手并建立websocket连接
+	conn, resp, err := d.Dial(assembleAuthUrl(hostUrlTmp, ApiKey, ApiSecret), nil)
+	if err != nil {
+		// panic(readResp(resp) + err.Error())
+		return nil, err
+	} else if resp.StatusCode != 101 {
+		// panic(readResp(resp) + err.Error())
+		return nil, err
+	}
+
+  return conn, nil
+}
+
 // 连接讯飞语音听写的连接串
 func XunfeiVoicedictationConn() (*websocket.Conn, error) {
 	d := websocket.Dialer{
 		HandshakeTimeout: 5 * time.Second,
 	}
 	//握手并建立websocket连接
-	conn, resp, err := d.Dial(assembleAuthUrl(hostUrl, apiKey, apiSecret), nil)
+	conn, resp, err := d.Dial(assembleAuthUrl(vdHostUrl, ApiKey, ApiSecret), nil)
 	if err != nil {
 		// panic(readResp(resp) + err.Error())
 		return nil, err
@@ -120,7 +145,10 @@ func XunfeiVoicedictationConn() (*websocket.Conn, error) {
 
 func XunfeiVoicedictationRequestParams(i interface{}) interface{} {
 	var frame = Frame{}
-	str, _ := i.(string)
+	str, ok := i.(string)
+	if !ok {
+		return nil
+	}
 	json.Unmarshal([]byte(str), &frame)
 	mFrame := ConvertStructToMap(reflect.ValueOf(frame))
 	return mFrame
