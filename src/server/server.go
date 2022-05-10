@@ -51,8 +51,8 @@ func (s *Server) addClient(c *Client) {
 func (s *Server) removeClient(uuid string) {
 	index := s.indexes[uuid]
 	if index >= 0 {
-		s.list[index].Close()
-		s.list = append(s.list[:index], s.list[index+1:]...)
+		// s.list[index].Close()
+		// s.list = append(s.list[:index], s.list[index+1:]...)
 	}
 }
 
@@ -88,10 +88,19 @@ func (s *Server) VerifyToken(token string) bool {
 	urlStr := u.String() // "https://xxxx.com/api/v1/verfiy_token"
 
 	client := &http.Client{}
-	r, _ := http.NewRequest(http.MethodPost, urlStr, strings.NewReader(data.Encode())) // URL-encoded payload
+	r, err := http.NewRequest(http.MethodPost, urlStr, strings.NewReader(data.Encode())) // URL-encoded payload
+
+	if err != nil {
+		log.Error(err)
+		return false
+	}
 	r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, _ := client.Do(r)
+	resp, err := client.Do(r)
+	if err != nil {
+		log.Error(err)
+		return false
+	}
 	log.WithField("status", resp.Status).Info("token验证结果...")
   if "204 No Content" == resp.Status {
 		return true

@@ -46,7 +46,7 @@ func main() {
 	if *mapFlag {
 		fmt.Println("服务及API列表:")
 		server.MapDict()
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	var usage = `使用: openai-ws [options...]
@@ -62,12 +62,12 @@ func main() {
 
 	if *helpFlag {
 		fmt.Println(usage)
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	if *versionFlag {
 		fmt.Println(version)
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	// 启动服务

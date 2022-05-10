@@ -232,7 +232,7 @@ func (w *WsConn) CloudWriter(client *Client, ctx context.Context) {
 				}
 
 				// 休眠一秒钟
-				time.Sleep(1 * time.Second)
+				// time.Sleep(1 * time.Second)
 			}
 		}
 	}
