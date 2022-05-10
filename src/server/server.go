@@ -27,7 +27,6 @@ var (
 
 type Server struct {
 	list         []*Client
-	indexes      map[string]int  // 客户端位置索引
 	Rmsg         chan string     // 接收客户端退出消息
 	MaxCnt       uint            // 最大客户连接数
 	VerfiyUrl    string          // 认证服务器地址
@@ -36,7 +35,6 @@ type Server struct {
 func NewServer(tokenUrl string, maxClientCnt uint) *Server {
 	return &Server{
 		list: make([]*Client, 0, initCap),
-    indexes: make(map[string]int),
 		Rmsg: make(chan string),
 		MaxCnt: maxClientCnt,
 		VerfiyUrl: tokenUrl,
@@ -45,16 +43,8 @@ func NewServer(tokenUrl string, maxClientCnt uint) *Server {
 
 func (s *Server) addClient(c *Client) {
 	s.list = append(s.list, c)
-	s.indexes[c.Uuid] = len(s.list) - 1
 }
 
-func (s *Server) removeClient(uuid string) {
-	index := s.indexes[uuid]
-	if index >= 0 {
-		// s.list[index].Close()
-		// s.list = append(s.list[:index], s.list[index+1:]...)
-	}
-}
 
 func (s *Server) Listen(ctx context.Context) {
   go func() {
@@ -64,7 +54,7 @@ func (s *Server) Listen(ctx context.Context) {
 			case <- time.After(10 * time.Minute):
 				log.WithField("Num", s.ActiveClients()).Info("当前活跃用户数")
 			case m := <- s.Rmsg:
-        s.removeClient(m)
+				log.WithField("Client uuid", m).Info("Server收到客户端结束通信")
 			case <- ctx.Done():
 				log.Info("Server listen canceled...")
 				return

@@ -4,6 +4,8 @@ package main
 import (
 	"fmt"
 	"time"
+	"bytes"
+  "encoding/binary"
 	"encoding/base64"
 	"github.com/gorilla/websocket"
 	"os"
@@ -103,11 +105,14 @@ func main() {
 
 		// 将audio数据写入文件
 		b, err := base64.StdEncoding.DecodeString(resp.Data.Audio)
-		fmt.Println(b)
 		if err != nil {
       panic(err.Error())
 		}
-    if _, err := f.Write(b); err != nil {
+
+		buf := new(bytes.Buffer)
+    binary.Write(buf, binary.LittleEndian, b)
+
+    if _, err := f.Write(buf.Bytes()); err != nil {
       panic(err.Error())
     }
   

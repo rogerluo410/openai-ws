@@ -56,6 +56,7 @@ func (c *Client) Close() {
 
 func (c *Client) Run(s *Server) {
 	go func() {
+		defer c.Close()
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		go c.Conn.Reader(c, ctx, cancelFunc)
 		go c.Conn.Writer(c, ctx)
