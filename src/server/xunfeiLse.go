@@ -25,7 +25,7 @@ type LseCommonData struct {
 
 type LseBusinessData struct {
   Sub string `json:"sub"`
-	Ent int `json:"ent"`
+	Ent string `json:"ent"`
 	Category string `json:"category"`
 	Aus int `json:"aus"`
 	Cmd string `json:"cmd"`
