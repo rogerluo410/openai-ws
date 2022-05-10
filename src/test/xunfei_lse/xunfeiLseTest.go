@@ -23,13 +23,23 @@ var (
 	queryStr  = "provider=xunfei&api_name=lse"
 	token     = "1234"
 	appid     = "b55b61a2"
-	file      = "xunfeiTtsTest.pcm" //请填写您的音频文件路径
+	file      = "xunfeiLseTest.pcm" //请填写您的音频文件路径
 )
 
 const (
 	STATUS_FIRST_FRAME    = 0
 	STATUS_CONTINUE_FRAME = 1
 	STATUS_LAST_FRAME     = 2
+	// BusinessArgs参数常量
+	SUB = "ise"
+	ENT = "cn_vip"
+  // 中文题型：read_syllable（单字朗读，汉语专有）read_word（词语朗读）read_sentence（句子朗读）read_chapter(篇章朗读)
+  // 英文题型：read_word（词语朗读）read_sentence（句子朗读）read_chapter(篇章朗读)simple_expression（英文情景反应）read_choice（英文选择题）topic（英文自由题）retell（英文复述题）picture_talk（英文看图说话）oral_translation（英文口头翻译）
+  CATEGORY = "read_sentence"
+  // 待评测文本 utf8 编码，需要加utf8bom 头
+  TEXT = "\uFEFF今天天气怎么样"
+  //直接从文件读取的方式
+  // TEXT = '\uFEFF'+ open("cn/read_sentence_cn.txt","r",encoding='utf-8').read()
 )
 
 func main() {
@@ -90,13 +100,18 @@ func main() {
 			case STATUS_FIRST_FRAME: //发送第一帧音频，带business 参数
 				frameData := map[string]interface{}{
 						"common": map[string]interface{}{
-								"app_id": appid, //appid 必须带上，只需第一帧发送
+							"app_id": appid, //appid 必须带上，只需第一帧发送
 						},
 						"business": map[string]interface{}{ //business 参数，只需一帧发送
-							"aue": "raw",
-							"vcn": "xiaoyan",
-							"pitch": 50,
-							"speed": 50,
+							"category": CATEGORY, 
+							"sub": SUB, 
+							"ent": "cn_vip", 
+							"cmd": "ssb", 
+							"auf": "audio/L16;rate=16000",
+              "aue": "raw", 
+							"text": TEXT, 
+							"ttp_skip": true, 
+							"aus": 1,
 						},
 						"data": map[string]interface{}{
 								"status":    STATUS_FIRST_FRAME,
@@ -110,6 +125,11 @@ func main() {
 				status = STATUS_CONTINUE_FRAME
 			case STATUS_CONTINUE_FRAME:
 				frameData := map[string]interface{}{
+					  "business":  map[string]interface{}{
+							"cmd": "auw", 
+							"aus": 2, 
+							"aue": "raw",
+						},
 						"data": map[string]interface{}{
 								"status":    STATUS_CONTINUE_FRAME,
 								"text":     base64.StdEncoding.EncodeToString(buffer[:len]),
@@ -120,10 +140,15 @@ func main() {
 				conn.WriteMessage(websocket.TextMessage, str)
 			case STATUS_LAST_FRAME:
 				frameData := map[string]interface{}{
-						"data": map[string]interface{}{
-								"status":    STATUS_LAST_FRAME,
-								"text":     base64.StdEncoding.EncodeToString(buffer[:len]),
-						},
+					"business":  map[string]interface{}{
+						"cmd": "auw", 
+						"aus": 2, 
+						"aue": "raw",
+					},
+					"data": map[string]interface{}{
+							"status":    STATUS_LAST_FRAME,
+							"text":     base64.StdEncoding.EncodeToString(buffer[:len]),
+					},
 				}
 				// conn.WriteJSON(frameData)
 				str, _ := json.Marshal(frameData)

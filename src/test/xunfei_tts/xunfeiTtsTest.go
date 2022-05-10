@@ -4,8 +4,8 @@ package main
 import (
 	"fmt"
 	"time"
-	"bytes"
-  "encoding/binary"
+	_ "bytes"
+  _ "encoding/binary"
 	"encoding/base64"
 	"github.com/gorilla/websocket"
 	"os"
@@ -109,10 +109,12 @@ func main() {
       panic(err.Error())
 		}
 
-		buf := new(bytes.Buffer)
-    binary.Write(buf, binary.LittleEndian, b)
+		fmt.Println(b)
 
-    if _, err := f.Write(buf.Bytes()); err != nil {
+		// buf := new(bytes.Buffer)
+    // binary.Write(buf, binary.LittleEndian, b)
+
+    if _, err := f.Write(b); err != nil {
       panic(err.Error())
     }
   

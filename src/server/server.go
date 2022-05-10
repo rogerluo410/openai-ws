@@ -45,16 +45,24 @@ func (s *Server) addClient(c *Client) {
 	s.list = append(s.list, c)
 }
 
+func (s *Server) removeClients() {
+	for index, client := range s.list {
+		if !client.Actived {
+			s.list = append(s.list[:index], s.list[index+1:]...)
+		}
+	}
+}
 
 func (s *Server) Listen(ctx context.Context) {
   go func() {
     for {
 			select {
 			// 每隔10分钟查看一次客户数量
-			case <- time.After(10 * time.Minute):
+			case <- time.After(1 * time.Minute):
 				log.WithField("Num", s.ActiveClients()).Info("当前活跃用户数")
 			case m := <- s.Rmsg:
-				log.WithField("Client uuid", m).Info("Server收到客户端结束通信")
+				log.WithField("Client Address", m).Info("Server收到客户端结束通信")
+				s.removeClients()
 			case <- ctx.Done():
 				log.Info("Server listen canceled...")
 				return
