@@ -213,9 +213,11 @@ func (w *WsConn) CloudWriter(client *Client, ctx context.Context) {
 				switch v.Kind() {
 				case reflect.String:
 					str, _ := m.(string)
+					log.WithField("发给云端服务的字节流:", str).Info("发送字节流")
 					err = w.Conn.WriteMessage(websocket.TextMessage, []byte(str))
 					break
 				case reflect.Map:
+					log.WithField("发给云端服务的json:", m).Info("发送json")
 					err = w.Conn.WriteJSON(m)
 					break
 				default:

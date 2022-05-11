@@ -26,7 +26,7 @@ var (
 
 const (
 	STATUS_FRAME     = 2  // 数据状态，固定为2
-	Text  =  "这是一个语音合成的测试用例"
+	Text  =  "这是一个语音合成示例"
 )
 
 func main() {
@@ -70,7 +70,7 @@ func main() {
 			"text":     base64.StdEncoding.EncodeToString([]byte(Text)),
 		},
   }
-  fmt.Println("数据封装完毕!")
+  fmt.Println("数据封装完毕: ", frameData)
 
 	// 如果音频文件存在, 则删除
 	if _, err := os.Stat(file); err == nil {
@@ -108,8 +108,6 @@ func main() {
 		if err != nil {
       panic(err.Error())
 		}
-
-		fmt.Println(b)
 
 		// buf := new(bytes.Buffer)
     // binary.Write(buf, binary.LittleEndian, b)
