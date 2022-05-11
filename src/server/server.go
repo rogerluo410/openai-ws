@@ -139,6 +139,14 @@ func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 查询提供的服务
+	cloudWs, err := ProviderWsMapper(provider[0], apiName[0])
+	if err != nil {
+		log.WithField("err", err).Error("Create cloud ws conn failed...")
+		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
+		return
+	}
+
 	// Verify token from openai_backend
 	if s.VerifyToken(token[0]) {
 		log.Info("路由参数解析成功并且token认证成功, 将升级为Websocket服务...")
@@ -157,14 +165,6 @@ func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	
 	//注册client
   wsConn := NewWsConn(ws)
-  
-	cloudWs, err := ProviderWsMapper(provider[0], apiName[0])
-	if err != nil {
-		log.WithField("err", err).Error("Create cloud ws conn failed...")
-		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
-		return
-	}
-
 	cloudWsConn := NewWsConn(cloudWs)
 	log.WithFields(log.Fields{"服务提供商": provider[0], "api": apiName[0]}).Info("创建云端服务提供商Websocket连接串成功")
 

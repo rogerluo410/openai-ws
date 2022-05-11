@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	version = "1.0.2"
+	version = "1.0.3"
 	maxActiveClientCnt = 10000
 	port = GetEnvDefault("OAWS_PORT", "8080")
 	openaiBackendUrl = GetEnvDefault("OPENAI_BACKEND_URL", "http://localhost:3001")
