@@ -6,10 +6,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 
 	server "github.com/rogerluo410/openai-ws/src/server"
+	grpc "github.com/rogerluo410/openai-ws/src/grpc"
 )
 
 var (
@@ -70,12 +72,28 @@ func main() {
 		os.Exit(0)
 	}
 
-	// 启动服务
-	log.WithFields(log.Fields{"Openai Ws Port": portFlag, "Openai Backend Url": tokenFlag}).Info("启动服务...")
-	serverInstance := server.NewServer(tokenFlag, maxFlag)
-	ctx, _:=context.WithCancel(context.Background())
-	serverInstance.Listen(ctx)
+	var wg = sync.WaitGroup{}
+	wg.Add(2)
 
-	http.HandleFunc("/ws", serverInstance.HandleWebsocket)
-	log.Info(http.ListenAndServe(":"+portFlag, nil))
+	// 启动服务
+	go func() {
+		defer wg.Done()
+    log.WithFields(log.Fields{"Openai Ws Port": portFlag, "Openai Backend Url": tokenFlag}).Info("Websocket启动服务...")
+		serverInstance := server.NewServer(tokenFlag, maxFlag)
+		ctx, _:=context.WithCancel(context.Background())
+		serverInstance.Listen(ctx)
+
+		http.HandleFunc("/ws", serverInstance.HandleWebsocket)
+		log.Info(http.ListenAndServe(":"+portFlag, nil))
+	}()
+
+	go func() {
+		defer wg.Done()
+		log.WithFields(log.Fields{"Openai Grpc Port": 8090, "Openai Backend Url": tokenFlag}).Info("Grpc启动服务...")
+		grpc.StartGrpcServer(8090)
+	}()
+	
+	wg.Wait()
+	log.Info("程序将退出...")
+	os.Exit(0)
 }

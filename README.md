@@ -22,7 +22,11 @@
   `cd test && ./xufeiVoiceDictationTest` or `./xufeiVoiceDictationTest -t xxxx -a http://xxx.com` 指定token和代理ws服务地址  
 
 # 部署  
-  `make install`      
+  `make install`    
+
+# Grpc
+
+  `protoc --go_out=plugins=grpc:. yitu_liveaudio.proto`  
 
 # TODO
 
