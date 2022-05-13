@@ -5,6 +5,8 @@ option java_package = "com.yitutech.speech";
 option java_outer_classname = "StreamingProtos";
 option go_package = "../pb";
 
+package yitu;
+
 // 音频相关设置
 message AudioConfig {
     // 音频的编码
