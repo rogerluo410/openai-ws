@@ -16,7 +16,7 @@ var (
   devKey = "ZDVkZDEwZjg5ZDk4NDVlYjg2NjBmZTE2YTM2MDM2MWU="
 )
 
-func YiyuAsrConn() (*grpc.ClientConn, error) {
+func YituAsrConn() (*grpc.ClientConn, error) {
 	conn, err := grpc.Dial(asrHostPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Error("Did not connect: %v", err)
@@ -24,6 +24,10 @@ func YiyuAsrConn() (*grpc.ClientConn, error) {
 	}
 
 	return conn, err
+}
+
+func GetYituAsrClient(conn *grpc.ClientConn) {
+	c := pb.NewSpeechRecognitionClient(conn)	
 }
 
 // func main() {
