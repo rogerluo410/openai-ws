@@ -9,6 +9,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/metadata"
 
 	pb "github.com/rogerluo410/openai-ws/src/grpc/pb"
 )
@@ -72,16 +73,65 @@ func (s *mathServer) Max(srv pb.Math_MaxServer) error {
 
 func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_RecognizeStreamServer) error {
 	log.Println("start RecognizeStream server")
-	for {
-		r, err := stream.Recv()
-		if err == io.EOF {
-			return stream.Send(&pb.StreamingSpeechResponse{Status: &pb.StreamingSpeechStatus{ProcessedTimestamp: time.Now().Unix()}})
-		}
-		if err != nil {
-			return err
-		}
-		log.Printf("stream.Recv payload: %s", r.GetRequestPayload())
+	// Get token from context
+	// md, ok := metadata.FromIncomingContext(stream.Context()) // get context from stream
+  
+	ctx := stream.Context()
+	done := make(chan bool)
+	SendMsg := make(chan pb.StreamingSpeechRequest)
+	ReceiveMsg := make(chan pb.StreamingSpeechResponse)
+
+	// 创建依图grpc客户端
+	if err := YituAsrClient(SendMsg, ReceiveMsg); err != nil {
+		log.Fatal("Failed to start up Yitu grpc client: %v", err)
+		return err
 	}
+	
+	go func() error {
+		for {
+			select {
+			case <- ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			r, err := stream.Recv()
+			if err == io.EOF {
+				close(done)
+				return stream.Send(&pb.StreamingSpeechResponse{Status: &pb.StreamingSpeechStatus{ProcessedTimestamp: time.Now().Unix()}})
+			}
+			if err != nil {
+				return err
+			}
+			log.Printf("stream.Recv payload: %s", r)
+
+			SendMsg <- *r
+		}
+	}()
+
+	go func() error {
+		for {
+			select {
+			case <- ctx.Done():
+				return ctx.Err()
+			case response := <- ReceiveMsg:
+				if err := stream.Send(&response); err != nil {
+					log.Printf("send error %v", err)
+				}
+			}
+		}
+	}()
+
+	go func() {
+		<- ctx.Done()
+		if err := ctx.Err(); err != nil {
+			log.Println(err)
+		}
+		close(done)
+	}()
+
+	<- done
+
 	return nil
 }
 
