@@ -81,11 +81,6 @@ func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_Re
 	SendMsg := make(chan pb.StreamingSpeechRequest)
 	ReceiveMsg := make(chan pb.StreamingSpeechResponse)
 
-	// 创建依图grpc客户端
-	if err := YituAsrClient(SendMsg, ReceiveMsg); err != nil {
-		log.Fatal("Failed to start up Yitu grpc client: %v", err)
-		return err
-	}
 	
 	go func() error {
 		for {
@@ -121,6 +116,12 @@ func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_Re
 			}
 		}
 	}()
+
+	// 创建依图grpc客户端
+	if err := YituAsrClient(SendMsg, ReceiveMsg); err != nil {
+		log.Fatal("Failed to start up Yitu grpc client: %v", err)
+		return err
+	}
 
 	go func() {
 		<- ctx.Done()
