@@ -89,17 +89,18 @@ func YituAsrClient(sendMsg chan *pb.StreamingSpeechRequest, receiveMsg chan *pb.
 		}
 	}()
 
-	go func() error {
+	go func() {
 		for {
 			select {
 			case <- streamCtx.Done():
 				log.WithField("StreamCtx Err", streamCtx.Err()).Info("Received from stream context err message")
-				return streamCtx.Err()
+				return
 			case request := <- sendMsg:
 				log.WithField("Message", request).Info("Openai proxy Will send message to Yitu server")
 				if err := stream.Send(request); err != nil {
-					log.Error("Yitu client send error %v", err)
+					log.WithField("Stream send err", err).Error("Yitu client send error")
 				}
+			default:
 			}
 		}
 	}()

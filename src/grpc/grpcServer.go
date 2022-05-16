@@ -110,7 +110,7 @@ func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_Re
 				log.WithField("Err", err).Error("Openai proxy server stream.Recv received error")
 				return
 			}
-			log.WithField("Response", r).Info("Openai proxy server stream.Recv payload")
+			log.Info("Openai proxy server stream.Recv payload")
 
 			SendMsg <- r
 		}
