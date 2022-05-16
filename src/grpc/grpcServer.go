@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"time"
+	_ "time"
 	"io"
 
 	log "github.com/sirupsen/logrus"
@@ -80,10 +80,10 @@ func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_Re
   
 	ctx := stream.Context()
 	done := make(chan bool)
-	SendMsg := make(chan pb.StreamingSpeechRequest)
-	ReceiveMsg := make(chan pb.StreamingSpeechResponse)
+	SendMsg := make(chan *pb.StreamingSpeechRequest)
+	ReceiveMsg := make(chan *pb.StreamingSpeechResponse)
 	ErrorMsg := make(chan string)
-
+	
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
@@ -95,6 +95,7 @@ func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_Re
 			case <- ctx.Done():
 				close(done)
 				return
+			default:  //需要加default， 否则阻塞在case <- ctx.Done()， 后面的流程不会执行
 			}
 
 			r, err := stream.Recv()
@@ -105,12 +106,13 @@ func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_Re
 				// return stream.Send(&pb.StreamingSpeechResponse{Status: &pb.StreamingSpeechStatus{ProcessedTimestamp: time.Now().Unix()}})
 			}
 			if err != nil {
+				close(done)
 				log.WithField("Err", err).Error("Openai proxy server stream.Recv received error")
 				return
 			}
 			log.WithField("Response", r).Info("Openai proxy server stream.Recv payload")
 
-			SendMsg <- *r
+			SendMsg <- r
 		}
 	}()
 
@@ -126,12 +128,19 @@ func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_Re
 				close(done)
 				return
 			case response := <- ReceiveMsg:
-				if err := stream.Send(&response); err != nil {
+				if err := stream.Send(response); err != nil {
 					log.WithField("Err", err).Error("Openai proxy server stream.Send error")
 				}
+			default:
 			}
 		}
 	}()
+
+	// 创建依图grpc客户端
+	if err := YituAsrClient(SendMsg, ReceiveMsg, ErrorMsg); err != nil {
+		log.Error("Failed to start up Yitu grpc client: %v", err)
+		return err
+	}
 
 	// go func() {
 	// 	<- ctx.Done()
@@ -141,12 +150,7 @@ func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_Re
 	// 	close(done)
 	// }()
 
-	time.Sleep(2 * time.Second)
-	// 创建依图grpc客户端
-	if err := YituAsrClient(SendMsg, ReceiveMsg, ErrorMsg); err != nil {
-		log.Error("Failed to start up Yitu grpc client: %v", err)
-		return err
-	}
+	// time.Sleep(2 * time.Second)
 
 	for {
 		select {
@@ -155,6 +159,7 @@ func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_Re
 	    return status.Errorf(codes.InvalidArgument, error)
 		case <- done:
 			return nil
+		default:
 		}
 	}
 

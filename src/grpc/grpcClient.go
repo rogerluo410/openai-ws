@@ -46,7 +46,7 @@ func yituAsrAuth() string {
 	return fmt.Sprintf("%s,%s,%s", devId, ts, signature)
 }
 
-func YituAsrClient(sendMsg chan pb.StreamingSpeechRequest, receiveMsg chan pb.StreamingSpeechResponse, errorMsg chan string) error {
+func YituAsrClient(sendMsg chan *pb.StreamingSpeechRequest, receiveMsg chan *pb.StreamingSpeechResponse, errorMsg chan string) error {
 	conn, err := yituAsrConn()
 	if err != nil {
 		log.Error("Connect to Yitu grpc server failed %v", err)
@@ -59,18 +59,18 @@ func YituAsrClient(sendMsg chan pb.StreamingSpeechRequest, receiveMsg chan pb.St
   log.WithField("apiKey", apiKey).Info("依图签名")
 
 	// 添加metadata元数据给依图服务端
-	// ctx := context.Background()
-	// ctx = metadata.AppendToOutgoingContext(ctx, "x-api-key", apiKey)
-	md := metadata.Pairs("x-api-key", apiKey)
-  ctx := metadata.NewOutgoingContext(context.Background(), md)
+	ctx := context.Background()
+	ctx = metadata.AppendToOutgoingContext(ctx, "x-api-key", apiKey)
+	// md := metadata.Pairs("x-api-key", apiKey)
+  // ctx := metadata.NewOutgoingContext(context.Background(), md)
 
 	stream, err := c.RecognizeStream(ctx)
 	streamCtx := stream.Context()
 	done := make(chan bool)
 
-	if err := stream.Send(&pb.StreamingSpeechRequest{RequestPayload: &pb.StreamingSpeechRequest_AudioData{AudioData: []byte{'1','2','3'}}}); err != nil {
-		log.Error("Yitu client send error111 %v", err)
-	}
+	// if err := stream.Send(&pb.StreamingSpeechRequest{RequestPayload: &pb.StreamingSpeechRequest_AudioData{AudioData: []byte{'1','2','3'}}}); err != nil {
+	// 	log.Error("Yitu client send error111 %v", err)
+	// }
 
 	go func() {
 		for {
@@ -80,12 +80,12 @@ func YituAsrClient(sendMsg chan pb.StreamingSpeechRequest, receiveMsg chan pb.St
 				return
 			}
 			if err != nil {
-				log.WithFields(log.Fields{"Err": err, "Resp": resp}).Error("Yitu grpc server receives error")
+				log.WithFields(log.Fields{"Err": err}).Error("Yitu grpc server receives error")
 				errorMsg <- err.Error()
 				return
 			}
-			receiveMsg <- *resp
-			log.Printf("Received from Yitu grpc server %v", *resp)
+			log.WithField("Message", resp).Info("Received from Yitu grpc server")
+			receiveMsg <- resp
 		}
 	}()
 
@@ -93,11 +93,11 @@ func YituAsrClient(sendMsg chan pb.StreamingSpeechRequest, receiveMsg chan pb.St
 		for {
 			select {
 			case <- streamCtx.Done():
-				log.WithField("StreamCtx Errr", streamCtx.Err()).Info("Received from stream context err message")
+				log.WithField("StreamCtx Err", streamCtx.Err()).Info("Received from stream context err message")
 				return streamCtx.Err()
 			case request := <- sendMsg:
-				log.WithField("Sending message", request).Info("Will send message to Yitu server")
-				if err := stream.Send(&request); err != nil {
+				log.WithField("Message", request).Info("Openai proxy Will send message to Yitu server")
+				if err := stream.Send(request); err != nil {
 					log.Error("Yitu client send error %v", err)
 				}
 			}
@@ -109,7 +109,7 @@ func YituAsrClient(sendMsg chan pb.StreamingSpeechRequest, receiveMsg chan pb.St
 	go func() {
 		<- streamCtx.Done()
 		if err := streamCtx.Err(); err != nil {
-			log.WithField("streamCtx Errr", err).Info("Received from stream context err message")
+			log.WithField("streamCtx Err", err).Info("Received from stream context err message")
 		}
 		close(done)
 	}()
