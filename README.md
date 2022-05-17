@@ -28,13 +28,15 @@
   
   ## protoc 
   1. 安装grpc插件  
-  `go get -u github.com/golang/protobuf/{proto,protoc-gen-go}`  
-  `which protoc-gen-go`  -- 查看是否安装成功 
-  `export PATH="$PATH:/$GOPATH/bin"`  -- 导出环境变量, protoc-gen-go会安装在$GOPATH/bin 中,  shell会找不到命令, 需要导出PATH.  
+    `go get -u github.com/golang/protobuf/{proto,protoc-gen-go}`  
+
+    `which protoc-gen-go`  -- 查看是否安装成功  
+
+    `export PATH="$PATH:/$GOPATH/bin"`  -- 导出环境变量, protoc-gen-go会安装在$GOPATH/bin 中,  shell会找不到命令, 需要导出PATH.   
   
 
-  2. proto生成golang代码  
-  `protoc --go_out=plugins=grpc:. yitu_liveaudio.proto`  
+  2. proto生成golang代码   
+    `protoc --go_out=plugins=grpc:. yitu_liveaudio.proto`   
 
 # TODO
 
