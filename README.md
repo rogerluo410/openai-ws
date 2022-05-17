@@ -1,9 +1,19 @@
 # openai-ws
 
-代理服务提供商的WebSocket服务  
+代理服务供应商的WebSocket服务 和 Grpc服务 
 
-  * 输入为结构化数据字节流, 数据结构参考具体服务提供商文档。  
-  * 输出为结构化数据字节流, 数据结构参考具体服务提供商文档。  
+  * 输入为结构化数据字节流, 数据结构参考具体服务供应商文档。  
+  * 输出为结构化数据字节流, 数据结构参考具体服务供应商文档。  
+
+:bullettrain_front:目前支持的服务供应商:  
+   - 讯飞  
+      [语音听写](https://www.xfyun.cn/doc/asr/voicedictation/API.html#%E6%8E%A5%E5%8F%A3%E8%B0%83%E7%94%A8%E6%B5%81%E7%A8%8B)     
+      [语音合成](https://www.xfyun.cn/doc/tts/online_tts/API.html#%E6%8E%A5%E5%8F%A3%E8%B0%83%E7%94%A8%E6%B5%81%E7%A8%8B)    
+      [语音评测](https://www.xfyun.cn/doc/Ise/IseAPI.html#%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E)  
+      [实时语音转写](https://www.xfyun.cn/doc/asr/rtasr/API.html#%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E)  
+   - 依图  
+      [实时语音转写](https://speech.yitutech.com/devdoc/audio/liveaudio)    
+
 
 # 启动服务 
 
@@ -31,11 +41,10 @@
     `cd test/xunfei_lse && ./xunfei_lse -t xxxx`   
 
   - 讯飞平台 - 实时语音转写 - 测试失败 :x:    
-    [原因]官方测试代码认证流程失败: https://xfyun-doc.cn-bj.ufileos.com/1536131421882586/rtasr_go_demo.zip   
-    
-
-
     `cd test/xunfei_rtasr && ./xunfei_rtasr`  
+    
+    :worried:官方测试代码认证流程失败, [golang测试代码](https://xfyun-doc.cn-bj.ufileos.com/1536131421882586/rtasr_go_demo.zip)     
+    <img width="1181" alt="image" src="https://user-images.githubusercontent.com/5260711/168715182-d36447ce-41e1-4739-8975-aa99c44a2c36.png">    
 
   - 依图平台 - 实时语音转写 -  测试通过 :white_check_mark:  
     `cd test/yitu_asr/real-time-asr-demo-python3-1203/real-time-demo && python real_time_asr_example.py`         
