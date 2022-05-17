@@ -18,8 +18,27 @@
 
 # API功能测试  
   
-  - 讯飞 语音听写  
-  `cd test && ./xufeiVoiceDictationTest` or `./xufeiVoiceDictationTest -t xxxx -a http://xxx.com` 指定token和代理ws服务地址  
+  - 讯飞平台 - 语音听写 - 测试通过 :white_check_mark:  
+    `cd test/xunfei_vd && ./xunfei_vd -t xxxx`   
+    
+    or 
+    `./xunfei_vd -t xxxx -a http://xxx.com` 指定token 和 Openai websocket代理服务地址  
+
+  - 讯飞平台 - 语音合成 - 测试通过 :white_check_mark:  
+    `cd test/xunfei_tts && ./xunfei_tts -t xxxx`   
+
+  - 讯飞平台 - 语音评测 - 测试通过 :white_check_mark:  
+    `cd test/xunfei_lse && ./xunfei_lse -t xxxx`   
+
+  - 讯飞平台 - 实时语音转写 - 测试失败 :x:    
+    [原因]官方测试代码认证流程失败: https://xfyun-doc.cn-bj.ufileos.com/1536131421882586/rtasr_go_demo.zip   
+    
+
+
+    `cd test/xunfei_rtasr && ./xunfei_rtasr`  
+
+  - 依图平台 - 实时语音转写 -  测试通过 :white_check_mark:  
+    `cd test/yitu_asr/real-time-asr-demo-python3-1203/real-time-demo && python real_time_asr_example.py`         
 
 # 部署  
   `make install`    
