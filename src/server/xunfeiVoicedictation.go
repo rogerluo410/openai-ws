@@ -16,14 +16,15 @@ import (
 	"reflect"
 
 	"github.com/gorilla/websocket"
-	_ "github.com/sirupsen/logrus"
+
+	config "github.com/rogerluo410/openai-ws/src/config"
 )
 
 var (
 	vdHostUrl   = "wss://iat-api.xfyun.cn/v2/iat"
-  Appid     = "b55b61a2"
-  ApiSecret = "M2FhNGE1ZjE1Nzg1ODQ3MGRkZTkyZWFh"
-	ApiKey    = "671fc248f8b264ee237a0c29ab624552"	
+  Appid     = config.ConfigInstance().XunfeiAppId
+  ApiSecret = config.ConfigInstance().XunfeiApiSecret
+	ApiKey    = config.ConfigInstance().XunfeiApiKey
 )
 
 // 发送数据包格式
@@ -115,10 +116,8 @@ func  XunfeiCommonConn(hostUrlTmp string) (*websocket.Conn, error) {
 	//握手并建立websocket连接
 	conn, resp, err := d.Dial(assembleAuthUrl(hostUrlTmp, ApiKey, ApiSecret), nil)
 	if err != nil {
-		// panic(readResp(resp) + err.Error())
 		return nil, err
 	} else if resp.StatusCode != 101 {
-		// panic(readResp(resp) + err.Error())
 		return nil, err
 	}
 
@@ -133,10 +132,8 @@ func XunfeiVoicedictationConn() (*websocket.Conn, error) {
 	//握手并建立websocket连接
 	conn, resp, err := d.Dial(assembleAuthUrl(vdHostUrl, ApiKey, ApiSecret), nil)
 	if err != nil {
-		// panic(readResp(resp) + err.Error())
 		return nil, err
 	} else if resp.StatusCode != 101 {
-		// panic(readResp(resp) + err.Error())
 		return nil, err
 	}
 

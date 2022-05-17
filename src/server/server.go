@@ -76,6 +76,9 @@ func (s *Server) ActiveClients() int {
 }
 
 func (s *Server) VerifyToken(token string) bool {
+	if len(token) == 0 {
+		return false
+	}
   apiUrl := s.VerfiyUrl
 	resource := "/api/v1/verfiy_token"
 	data := url.Values{}

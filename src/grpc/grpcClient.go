@@ -16,12 +16,13 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	pb "github.com/rogerluo410/openai-ws/src/grpc/pb"
+	config "github.com/rogerluo410/openai-ws/src/config"
 )
 
 var (
 	asrHostPort = "stream-asr-prod.yitutech.com:50051"
-	devId = "22642"
-  devKey = "ZDVkZDEwZjg5ZDk4NDVlYjg2NjBmZTE2YTM2MDM2MWU="
+	devId = config.ConfigInstance().YituDevId
+  devKey = config.ConfigInstance().YituDevKey
 )
 
 // 返回依图grpc连接串
@@ -56,7 +57,7 @@ func YituAsrClient(sendMsg chan *pb.StreamingSpeechRequest, receiveMsg chan *pb.
 
 	c := pb.NewSpeechRecognitionClient(conn)	
 	apiKey := yituAsrAuth()
-  log.WithField("apiKey", apiKey).Info("依图签名")
+  // log.WithField("apiKey", apiKey).Info("依图签名")
 
 	// 添加metadata元数据给依图服务端
 	ctx := context.Background()

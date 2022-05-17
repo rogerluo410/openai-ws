@@ -1,5 +1,6 @@
 # 可执行文件
 EXEC="./openai-ws"
+CONFIG="./config.yml"
 # 服务器地址
 REMOTE="deploy@47.106.176.202:/srv/openai_ws"
 
@@ -21,6 +22,7 @@ build-win64:
 
 install: build-linux64
 	rsync -zP $(EXEC) $(REMOTE)
+	rsync -zP $(CONFIG) $(REMOTE)
 
 .PHONY: clean 
 clean : 

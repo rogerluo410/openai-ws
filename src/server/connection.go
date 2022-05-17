@@ -49,7 +49,6 @@ func (w *WsConn) Reader(client *Client, ctx context.Context, cancelFunc context.
 	}()
 
 	pongCnt := 0
-	client.Wg.Add(1)
 
 	w.Conn.SetReadLimit(1024 * 1024)
 	w.Conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -100,7 +99,6 @@ func (w *WsConn) Reader(client *Client, ctx context.Context, cancelFunc context.
 
 func (w *WsConn) Writer(client *Client, ctx context.Context) {
 	pingTicker := time.NewTicker(pingPeriod)
-	client.Wg.Add(1)
 
 	defer func() {
 		log.Info("Client - Writer 协程退出...")
@@ -138,7 +136,6 @@ func (w *WsConn) CloudReader(client *Client, ctx context.Context) {
 		client.Wg.Done()
 	}()
 
-	client.Wg.Add(1)
 	w.Conn.SetReadLimit(1024 * 1024)
 	w.Conn.SetReadDeadline(time.Now().Add(pongWait))
 
@@ -183,7 +180,6 @@ func (w *WsConn) CloudReader(client *Client, ctx context.Context) {
 }
 
 func (w *WsConn) CloudWriter(client *Client, ctx context.Context) {
-	client.Wg.Add(1)
 	pingTicker := time.NewTicker(pingPeriod)
 
 	defer func() {

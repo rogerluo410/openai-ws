@@ -18,6 +18,7 @@ var (
 	version = "1.0.3"
 	maxActiveClientCnt = 10000
 	port = GetEnvDefault("OAWS_PORT", "8080")
+	grpcPort = GetEnvDefault("OAGRPC_PORT", "8090")
 	openaiBackendUrl = GetEnvDefault("OPENAI_BACKEND_URL", "http://localhost:3001")
 )
 
@@ -32,6 +33,9 @@ func GetEnvDefault(key, defVal string) string {
 func main() {
   var portFlag string
   flag.StringVar(&portFlag, "p",  port, "Websocket服务监听端口")
+
+	var grpcPortFlag string
+  flag.StringVar(&grpcPortFlag, "g",  grpcPort, "Grpc服务监听端口")
 
 	var tokenFlag string
   flag.StringVar(&tokenFlag, "t",  openaiBackendUrl, "token认证服务地址")
@@ -54,7 +58,8 @@ func main() {
 	var usage = `使用: openai-ws [options...]
 
 		Options:
-			-p  指定服务端口, 默认为8080
+			-p  指定Websocket服务端口, 默认为8080
+			-g  指定Grpc服务端口, 默认为8090
 			-t  认证服务器地址, 默认为http://localhost:3001
 			-c  设置最大客户连接数, 默认最大10000
 			-m  打印服务及API名列表
@@ -84,13 +89,16 @@ func main() {
 		serverInstance.Listen(ctx)
 
 		http.HandleFunc("/ws", serverInstance.HandleWebsocket)
-		log.Info(http.ListenAndServe(":"+portFlag, nil))
+		err := http.ListenAndServe(":"+portFlag, nil)
+		if err != nil {
+      log.WithField("Err", err).Fatalf("Failed to start up websocket server listening on %s", portFlag)
+		}
 	}()
 
 	go func() {
 		defer wg.Done()
-		log.WithFields(log.Fields{"Openai Grpc Port": 8090, "Openai Backend Url": tokenFlag}).Info("Grpc服务启动...")
-		grpc.StartGrpcServer(8090)
+		log.WithFields(log.Fields{"Openai Grpc Port": grpcPortFlag, "Openai Backend Url": tokenFlag}).Info("Grpc服务启动...")
+		grpc.StartGrpcServer(grpcPortFlag, tokenFlag)
 	}()
 	
 	wg.Wait()

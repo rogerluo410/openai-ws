@@ -3,15 +3,18 @@ package grpc
 import (
 	"context"
 	"fmt"
-	"net"
-	_ "time"
 	"io"
+	"strconv"
+	"strings"
+	"net"
+	"net/http"
+	"net/url"
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	_ "google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/metadata"
 
 	pb "github.com/rogerluo410/openai-ws/src/grpc/pb"
 )
@@ -28,9 +31,12 @@ type mathServer struct {
 	pb.UnimplementedMathServer
 }
 
+// 认证服务器地址
+var verfiyUrl = ""
+
 func (s *mathServer) Max(srv pb.Math_MaxServer) error {
 
-	log.Println("start new server")
+	log.Info("start new server")
 	var max int32
 	ctx := srv.Context()
 
@@ -76,8 +82,21 @@ func (s *mathServer) Max(srv pb.Math_MaxServer) error {
 func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_RecognizeStreamServer) error {
 	log.Println("Start RecognizeStream server")
 	// Get token from context
-	// md, ok := metadata.FromIncomingContext(stream.Context()) // get context from stream
-  
+	md, ok := metadata.FromIncomingContext(stream.Context()) // get context from stream
+	if !ok {
+		log.Error("Get metadata failed")
+		return status.Errorf(codes.Unauthenticated, "Get token failed")
+	}
+	token, ok := md["token"]
+  if !ok {
+		log.Error("Get token from metadata failed")
+		return status.Errorf(codes.Unauthenticated, "Get token failed")
+	}
+	if ok := verifyToken(token[0]); !ok {
+		log.Error("Token is invalid")
+		return status.Errorf(codes.Unauthenticated, "Token is invalid")
+	}
+
 	ctx := stream.Context()
 	done := make(chan bool)
 	SendMsg := make(chan *pb.StreamingSpeechRequest)
@@ -157,11 +176,48 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
 }
 
+func verifyToken(token string) bool {
+	if len(token) == 0 {
+		return false
+	}
+  apiUrl := verfiyUrl
+	resource := "/api/v1/verfiy_token"
+	data := url.Values{}
+	data.Set("token", token)
 
-func StartGrpcServer(port int) {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	u, _ := url.ParseRequestURI(apiUrl)
+	u.Path = resource
+	urlStr := u.String() // "https://xxxx.com/api/v1/verfiy_token"
+
+	client := &http.Client{}
+	r, err := http.NewRequest(http.MethodPost, urlStr, strings.NewReader(data.Encode())) // URL-encoded payload
+
 	if err != nil {
-		log.Fatal("Failed to start up grpc server listening on: %v", err)
+		log.Error(err)
+		return false
+	}
+	r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := client.Do(r)
+	if err != nil {
+		log.Error(err)
+		return false
+	}
+	log.WithField("status", resp.Status).Info("token验证结果...")
+  if "204 No Content" == resp.Status {
+		return true
+	} else {
+		return false
+	}
+}
+
+
+func StartGrpcServer(port string, url string) {
+	verfiyUrl = url
+	intVar, _ := strconv.Atoi(port)
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", intVar))
+	if err != nil {
+		log.WithField("Err", err).Fatalf("Failed to start up grpc server listening on %d", intVar)
 	}
 	s := grpc.NewServer()
 	pb.RegisterSpeechRecognitionServer(s, &speechRecognitionServer{})
@@ -169,6 +225,6 @@ func StartGrpcServer(port int) {
 	pb.RegisterMathServer(s, &mathServer{})
 	log.Printf("Grpc server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
-		log.Fatal("Failed to serve: %v", err)
+		log.WithField("Err", err).Fatal("Failed to serve grpc")
 	}
 }

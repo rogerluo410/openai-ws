@@ -17,7 +17,7 @@ type Client struct {
 	ClientId  string           // 客户端id
 	Token     string           // 认证token
 	Address   string           // 客户端ip
-	Wg        *sync.WaitGroup
+	Wg        sync.WaitGroup
 	Actived   bool             // 活跃标记  
 }
 
@@ -37,7 +37,7 @@ func NewClient(
 		Address:   address,
 		Msg:       make(chan interface{}),
 		CloudMsg:  make(chan interface{}),
-		Wg:        &sync.WaitGroup{},
+		Wg:        sync.WaitGroup{},
 		Actived:   true,
 	}
 }
@@ -55,6 +55,7 @@ func (c *Client) Close() {
 func (c *Client) Run(s *Server) {
 	go func() {
 		defer c.Close()
+		c.Wg.Add(4)
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		go c.Conn.Reader(c, ctx, cancelFunc)
 		go c.Conn.Writer(c, ctx)
