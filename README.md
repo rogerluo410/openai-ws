@@ -71,5 +71,5 @@
   - ~~用户OpenAI Backend认证~~  
   - ~~自动化部署~~  
   - 压力测试 
-  - APPKEY 配置化
-  - 优化 GRPC
+  - ~~APPKEY 配置化~~  
+  - ~~优化 GRPC~~
