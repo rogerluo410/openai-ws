@@ -116,6 +116,6 @@ func YituAsrClient(sendMsg chan *pb.StreamingSpeechRequest, receiveMsg chan *pb.
 	}()
 
 	<- done
-	log.Printf("Finished Yitu grpc client.")
+	log.Info("Finished Yitu grpc client.")
 	return nil
 }

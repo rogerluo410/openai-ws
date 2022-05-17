@@ -83,30 +83,29 @@ func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_Re
 	SendMsg := make(chan *pb.StreamingSpeechRequest)
 	ReceiveMsg := make(chan *pb.StreamingSpeechResponse)
 	ErrorMsg := make(chan string)
+
+	defer func() {
+		close(done)
+		if err := recover(); err != nil {
+			log.Error("Channel is already closed...")
+		}
+	}()
 	
 	go func() {
-		defer func() {
-			if err := recover(); err != nil {
-				log.Error("Channel is already closed...")
-			}
-		}()
 		for {
 			select {
 			case <- ctx.Done():
-				close(done)
 				return
 			default:  //需要加default， 否则阻塞在case <- ctx.Done()， 后面的流程不会执行
 			}
 
 			r, err := stream.Recv()
 			if err == io.EOF {
-				close(done)
 				log.Error("Openai proxy server stream.Recv received io.EOF")
 				return
 				// return stream.Send(&pb.StreamingSpeechResponse{Status: &pb.StreamingSpeechStatus{ProcessedTimestamp: time.Now().Unix()}})
 			}
 			if err != nil {
-				close(done)
 				log.WithField("Err", err).Error("Openai proxy server stream.Recv received error")
 				return
 			}
@@ -117,15 +116,9 @@ func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_Re
 	}()
 
 	go func() {
-		defer func() {
-			if err := recover(); err != nil {
-				log.Error("Channel is already closed...")
-			}
-		}()
 		for {
 			select {
 			case <- ctx.Done():
-				close(done)
 				return
 			case response := <- ReceiveMsg:
 				if err := stream.Send(response); err != nil {
@@ -138,30 +131,22 @@ func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_Re
 
 	// 创建依图grpc客户端
 	if err := YituAsrClient(SendMsg, ReceiveMsg, ErrorMsg); err != nil {
-		log.Error("Failed to start up Yitu grpc client: %v", err)
+		log.WithField("Err", err).Error("Failed to start up Yitu grpc client", err)
 		return err
 	}
-
-	// go func() {
-	// 	<- ctx.Done()
-	// 	if err := ctx.Err(); err != nil {
-	// 		log.Println(err)
-	// 	}
-	// 	close(done)
-	// }()
-
-	// time.Sleep(2 * time.Second)
 
 	for {
 		select {
 		case error := <- ErrorMsg:
-      log.WithField("Err message", error).Error("Received error message from Yitu grpc server")
+      log.WithField("Err", error).Error("Finished Openai grpc proxy with receiving error message from Yitu grpc server")
 	    return status.Errorf(codes.InvalidArgument, error)
 		case <- done:
 			return nil
 		default:
 		}
 	}
+
+	log.Info("Finished Openai grpc proxy.")
 
 	return nil
 }

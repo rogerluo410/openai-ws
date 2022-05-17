@@ -57,7 +57,7 @@ func (s *Server) Listen(ctx context.Context) {
   go func() {
     for {
 			select {
-			// 每隔10分钟查看一次客户数量
+			// 每隔1分钟查看一次客户数量
 			case <- time.After(1 * time.Minute):
 				log.WithField("Num", s.ActiveClients()).Info("当前活跃用户数")
 			case m := <- s.Rmsg:
