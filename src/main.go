@@ -78,7 +78,7 @@ func main() {
 	// 启动服务
 	go func() {
 		defer wg.Done()
-    log.WithFields(log.Fields{"Openai Ws Port": portFlag, "Openai Backend Url": tokenFlag}).Info("Websocket启动服务...")
+    log.WithFields(log.Fields{"Openai Ws Port": portFlag, "Openai Backend Url": tokenFlag}).Info("Websocket服务启动...")
 		serverInstance := server.NewServer(tokenFlag, maxFlag)
 		ctx, _:=context.WithCancel(context.Background())
 		serverInstance.Listen(ctx)
@@ -89,7 +89,7 @@ func main() {
 
 	go func() {
 		defer wg.Done()
-		log.WithFields(log.Fields{"Openai Grpc Port": 8090, "Openai Backend Url": tokenFlag}).Info("Grpc启动服务...")
+		log.WithFields(log.Fields{"Openai Grpc Port": 8090, "Openai Backend Url": tokenFlag}).Info("Grpc服务启动...")
 		grpc.StartGrpcServer(8090)
 	}()
 	

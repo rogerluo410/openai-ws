@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"time"
+	_ "time"
 	"io"
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	_ "google.golang.org/grpc/metadata"
 
 	pb "github.com/rogerluo410/openai-ws/src/grpc/pb"
@@ -72,66 +74,79 @@ func (s *mathServer) Max(srv pb.Math_MaxServer) error {
 
 
 func (s *speechRecognitionServer) RecognizeStream(stream pb.SpeechRecognition_RecognizeStreamServer) error {
-	log.Println("start RecognizeStream server")
+	log.Println("Start RecognizeStream server")
 	// Get token from context
 	// md, ok := metadata.FromIncomingContext(stream.Context()) // get context from stream
   
 	ctx := stream.Context()
 	done := make(chan bool)
-	SendMsg := make(chan pb.StreamingSpeechRequest)
-	ReceiveMsg := make(chan pb.StreamingSpeechResponse)
+	SendMsg := make(chan *pb.StreamingSpeechRequest)
+	ReceiveMsg := make(chan *pb.StreamingSpeechResponse)
+	ErrorMsg := make(chan string)
 
+	defer func() {
+		close(done)
+		if err := recover(); err != nil {
+			log.Error("Channel is already closed...")
+		}
+	}()
 	
-	go func() error {
+	go func() {
 		for {
 			select {
 			case <- ctx.Done():
-				return ctx.Err()
-			default:
+				return
+			default:  //需要加default， 否则阻塞在case <- ctx.Done()， 后面的流程不会执行
 			}
 
 			r, err := stream.Recv()
 			if err == io.EOF {
-				close(done)
-				return stream.Send(&pb.StreamingSpeechResponse{Status: &pb.StreamingSpeechStatus{ProcessedTimestamp: time.Now().Unix()}})
+				log.Error("Openai proxy server stream.Recv received io.EOF")
+				return
+				// return stream.Send(&pb.StreamingSpeechResponse{Status: &pb.StreamingSpeechStatus{ProcessedTimestamp: time.Now().Unix()}})
 			}
 			if err != nil {
-				return err
+				log.WithField("Err", err).Error("Openai proxy server stream.Recv received error")
+				return
 			}
-			log.Printf("stream.Recv payload: %s", r)
+			log.Info("Openai proxy server stream.Recv payload")
 
-			SendMsg <- *r
+			SendMsg <- r
 		}
 	}()
 
-	go func() error {
+	go func() {
 		for {
 			select {
 			case <- ctx.Done():
-				return ctx.Err()
+				return
 			case response := <- ReceiveMsg:
-				if err := stream.Send(&response); err != nil {
-					log.Printf("send error %v", err)
+				if err := stream.Send(response); err != nil {
+					log.WithField("Err", err).Error("Openai proxy server stream.Send error")
 				}
+			default:
 			}
 		}
 	}()
 
 	// 创建依图grpc客户端
-	if err := YituAsrClient(SendMsg, ReceiveMsg); err != nil {
-		log.Fatal("Failed to start up Yitu grpc client: %v", err)
+	if err := YituAsrClient(SendMsg, ReceiveMsg, ErrorMsg); err != nil {
+		log.WithField("Err", err).Error("Failed to start up Yitu grpc client", err)
 		return err
 	}
 
-	go func() {
-		<- ctx.Done()
-		if err := ctx.Err(); err != nil {
-			log.Println(err)
+	for {
+		select {
+		case error := <- ErrorMsg:
+      log.WithField("Err", error).Error("Finished Openai grpc proxy with receiving error message from Yitu grpc server")
+	    return status.Errorf(codes.InvalidArgument, error)
+		case <- done:
+			return nil
+		default:
 		}
-		close(done)
-	}()
+	}
 
-	<- done
+	log.Info("Finished Openai grpc proxy.")
 
 	return nil
 }
