@@ -6,19 +6,23 @@
 
     * ulimit -n  查看文件描述符最大限制    
     * fd数量超过了最大限制   
-    * ulimit -n 20000  调整最大限制超过客户端数  
+    * ulimit -n 20000  调整最大限制超过预设的客户端数  
 
     * on MacOS   
-    `launchctl limit maxfiles`   -- show maximum fd limits  
-    `sudo launchctl limit maxfiles 65536 200000`   -- The first number is the “soft” limit and the second number is the “hard” limit.    
+      `launchctl limit maxfiles`   -- show maximum fd limits  
+      `sudo launchctl limit maxfiles 65536 200000`   -- The first number is the “soft” limit and the second number is the “hard” limit.    
 
     * 为什么 ulimit -n 20000 没有效果？   
 
-    change the ulimit to avoid the error "too many open files" by default max ulimit is 4096 for linux and 1024 for mac, u can change ulimit to 4096 by typing ulimit -n 4096 for beyond 4096 you need to modify limits.conf in /etc/security folder for linux and set hard limit to 100000 by adding this line "* hard core 100000"     
+      change the ulimit to avoid the error "too many open files" by default max ulimit is 4096 for linux and 1024 for mac, u can change ulimit to 4096 by typing ulimit -n 4096 for beyond 4096 you need to modify limits.conf in /etc/security folder for linux and set hard limit to 100000 by adding this line "* hard core 100000"    
+ 
 
-  - 单机最大客户端数10000, 单机1000多个连接时, panic: unexpected EOF
+  - 单机最大客户端数10000, 单机1000多个连接时, 客户端panic: unexpected EOF
+    
+    服务器崩了导致...  
 
-  - 单机最大客户端数10000, 单机1000多个连接时, read: connection reset by peer, 服务器主动关闭了连接   
+
+  - 单机最大客户端数10000, 单机1000多个连接时, 客户端read: connection reset by peer, 服务器主动关闭了连接   
     
     可能是客户端握手超时, 之前设置5秒没握上手就超时，会报该错误， 设置为60秒就没问题了，websocket 默认握手超时就是60秒。  
 
@@ -32,9 +36,11 @@
     
     服务器崩了导致...  
 
+
   - 客户端单机最大客户端数10000,  http: Accept error: accept tcp [::]:8080: accept: too many open files; retrying in 160ms     
 
     文件描述符不够导致...  
+
 
   - 单机最大客户端数1000, 服务端 w.Conn.WriteMessage(websocket.PongMessage, []byte{})出错：  
       
