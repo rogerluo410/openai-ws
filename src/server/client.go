@@ -48,8 +48,14 @@ func (c *Client) Close() {
 			log.Error("Channel is already closed...")
 		}
 	}()
+
+	// 关闭channel
 	close(c.Msg)
 	close(c.CloudMsg)
+
+	// 关闭ws conn连接
+	c.Conn.Close()
+	c.CloudConn.Close()
 }
 
 func (c *Client) Run(s *Server) {
@@ -70,3 +76,21 @@ func (c *Client) Run(s *Server) {
 		s.Rmsg <- c.Address
 	}()
 }
+
+func (c *Client) RunEcho(s *Server) {
+	go func() {
+		defer c.Close()
+		c.Wg.Add(2)
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		go c.Conn.ReaderEcho(c, ctx, cancelFunc)
+		go c.Conn.WriterEcho(c, ctx)
+
+		log.Info("Echo阻塞, 等待读写协程结束...")
+		c.Wg.Wait()
+		// 全部读写websocket退出, 通知Server删除客户端变量
+		log.WithField("Client Address", c.Address).Info("全部读写websocket退出, 将通知Server删除客户端")
+		c.Actived = false
+		s.Rmsg <- c.Address
+	}()
+}
+

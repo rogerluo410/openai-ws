@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"sync"
+	_ "net/http/pprof"
 
 	log "github.com/sirupsen/logrus"
 

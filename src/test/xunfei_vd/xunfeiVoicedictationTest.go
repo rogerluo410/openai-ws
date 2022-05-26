@@ -63,7 +63,7 @@ func main() {
 	var frameSize = 1280              //每一帧的音频大小
 	var intervel = 40 * time.Millisecond //发送音频间隔
 	//开启协程，发送数据
-	ctx,_:=context.WithCancel(context.Background())
+	ctx, _:=context.WithCancel(context.Background())
 	defer conn.Close()
 	var status = 0
 	go func() {

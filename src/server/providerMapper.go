@@ -42,6 +42,8 @@ func ProviderRequestMapper(i interface{}, c *Client) interface{} {
 		default:
 			return nil
 		}
+	case "local":
+		return i
 	default:
 		return nil
 	}
@@ -81,6 +83,8 @@ func ProviderWsMapper(provider string, apiName string) (*websocket.Conn, error) 
 			default:
 				return nil, errors.New("讯飞服务未知的API名")
 			}
+		case "local":
+			return nil, nil
 		default:
 			return nil, errors.New("未知服务类型")
 		}

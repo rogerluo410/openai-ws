@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 	"context"
+	"sync"
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
@@ -30,6 +31,7 @@ type Server struct {
 	Rmsg         chan string     // 接收客户端退出消息
 	MaxCnt       uint            // 最大客户连接数
 	VerfiyUrl    string          // 认证服务器地址
+	lock       *sync.Mutex
 }
 
 func NewServer(tokenUrl string, maxClientCnt uint) *Server {
@@ -38,6 +40,7 @@ func NewServer(tokenUrl string, maxClientCnt uint) *Server {
 		Rmsg: make(chan string),
 		MaxCnt: maxClientCnt,
 		VerfiyUrl: tokenUrl,
+		lock: &sync.Mutex{},
 	}
 }
 
@@ -46,6 +49,8 @@ func (s *Server) addClient(c *Client) {
 }
 
 func (s *Server) removeClients() {
+	s.lock.Lock()
+  defer s.lock.Unlock()
 	for index, client := range s.list {
 		if !client.Actived {
 			s.list = append(s.list[:index], s.list[index+1:]...)
@@ -60,9 +65,11 @@ func (s *Server) Listen(ctx context.Context) {
 			// 每隔1分钟查看一次客户数量
 			case <- time.After(1 * time.Minute):
 				log.WithField("Num", s.ActiveClients()).Info("当前活跃用户数")
+			// 每隔15秒清除客户端	
+			case <- time.After(15 * time.Second):
+				s.removeClients()
 			case m := <- s.Rmsg:
 				log.WithField("Client Address", m).Info("Server收到客户端结束通信")
-				s.removeClients()
 			case <- ctx.Done():
 				log.Info("Server listen canceled...")
 				return
@@ -98,6 +105,13 @@ func (s *Server) VerifyToken(token string) bool {
 	r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := client.Do(r)
+
+	defer func() {
+    r.Close = true
+		r.Body.Close();
+		resp.Body.Close();
+	}()
+
 	if err != nil {
 		log.Error(err)
 		return false
@@ -112,6 +126,11 @@ func (s *Server) VerifyToken(token string) bool {
 
 // handleWebsocket connection.
 func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+    r.Close = true
+		r.Body.Close();
+	}()
+
 	if uint(s.ActiveClients()) >= s.MaxCnt {
     http.Error(w, "Up to max connections", http.StatusForbidden)
 		return
@@ -151,13 +170,15 @@ func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify token from openai_backend
-	if s.VerifyToken(token[0]) {
-		log.Info("路由参数解析成功并且token认证成功, 将升级为Websocket服务...")
-	} else {
-		http.Error(w, "Token is invalid", http.StatusForbidden)
-    return
+	if provider[0] != "local" {
+    if s.VerifyToken(token[0]) {
+			log.Info("路由参数解析成功并且token认证成功, 将升级为Websocket服务...")
+		} else {
+			http.Error(w, "Token is invalid", http.StatusForbidden)
+			return
+		}
 	}
-
+	
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		m := "Unable to upgrade to websockets"
@@ -173,6 +194,12 @@ func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 
 	client := NewClient(wsConn, cloudWsConn, provider[0], apiName[0], token[0], ws.RemoteAddr().String())
 	s.addClient(client)
-	// 启动Client
-	client.Run(s)
+
+	if provider[0] == "local" {
+		client.RunEcho(s)
+	} else {
+    // 启动Client
+	  client.Run(s)
+	}
+	
 }
