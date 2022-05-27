@@ -8,6 +8,8 @@
     * fd数量超过了最大限制   
     * ulimit -n 20000  调整最大限制超过预设的客户端数  
 
+    * 但是这个只能临时修改，具体永久修改方法不在这里说明，文件是/etc/security/limits.conf  
+
     * on MacOS   
       `launchctl limit maxfiles`   -- show maximum fd limits  
       `sudo launchctl limit maxfiles 65536 200000`   -- The first number is the “soft” limit and the second number is the “hard” limit.    
@@ -61,8 +63,14 @@
     
     * Data Race Detector 竞态条件检测  
     
-      https://go.dev/doc/articles/race_detector 
+      https://go.dev/doc/articles/race_detector  
 
+  
+  - 单机最大客户端数10000, 创建5000多个连接时, 客户端报read tcp [::1]:55290->[::1]:8080: i/o timeout  
+
+  - 引入协程池后, 单机最大客户端数10000， 客户端报write tcp [::1]:63518->[::1]:8080: write: broken pipe
+  
+    Usually, you get the broken pipe error when you write to the connection after the RST is sent, and when you read from the connection after the RST instead, you get the connection reset by peer error.    
 
   - 系统线程 / golang runtime 协程 M:N 设置  
  

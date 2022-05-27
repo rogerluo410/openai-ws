@@ -83,11 +83,15 @@ func main() {
 
 	// 启动服务
 	go func() {
-		defer wg.Done()
     log.WithFields(log.Fields{"Openai Ws Port": portFlag, "Openai Backend Url": tokenFlag}).Info("Websocket服务启动...")
 		serverInstance := server.NewServer(tokenFlag, maxFlag)
 		ctx, _:=context.WithCancel(context.Background())
 		serverInstance.Listen(ctx)
+
+		defer func() {
+      serverInstance.Close()
+			wg.Done()
+		}() 
 
 		http.HandleFunc("/ws", serverInstance.HandleWebsocket)
 		err := http.ListenAndServe(":"+portFlag, nil)

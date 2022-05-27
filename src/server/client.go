@@ -35,8 +35,8 @@ func NewClient(
 		ApiName:   apiName,
 		Token:     token,
 		Address:   address,
-		Msg:       make(chan interface{}),
-		CloudMsg:  make(chan interface{}),
+		Msg:       make(chan interface{}, 10),
+		CloudMsg:  make(chan interface{}, 10),
 		Wg:        sync.WaitGroup{},
 		Actived:   true,
 	}
@@ -49,6 +49,8 @@ func (c *Client) Close() {
 		}
 	}()
 
+	c.Actived = false
+
 	// 关闭channel
 	close(c.Msg)
 	close(c.CloudMsg)
@@ -58,39 +60,28 @@ func (c *Client) Close() {
 	c.CloudConn.Close()
 }
 
-func (c *Client) Run(s *Server) {
-	go func() {
-		defer c.Close()
-		c.Wg.Add(4)
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		go c.Conn.Reader(c, ctx, cancelFunc)
-		go c.Conn.Writer(c, ctx)
-		go c.CloudConn.CloudReader(c, ctx)
-		go c.CloudConn.CloudWriter(c, ctx)
+func (c *Client) Run() {
+	defer c.Close()
+	c.Wg.Add(4)
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	go c.Conn.Reader(c, ctx, cancelFunc)
+	go c.Conn.Writer(c, ctx)
+	go c.CloudConn.CloudReader(c, ctx)
+	go c.CloudConn.CloudWriter(c, ctx)
 
-		log.Info("阻塞, 等待读写协程结束...")
-		c.Wg.Wait()
-		// 全部读写websocket退出, 通知Server删除客户端变量
-		log.WithField("Client Address", c.Address).Info("全部读写websocket退出, 将通知Server删除客户端")
-		c.Actived = false
-		s.Rmsg <- c.Address
-	}()
+	log.Info("阻塞, 等待读写协程结束...")
+	c.Wg.Wait()
+	// 全部读写websocket退出, 通知Server删除客户端变量
+	log.WithField("Client Address", c.Address).Info("全部读写websocket退出, 将通知Server删除客户端")
 }
 
-func (c *Client) RunEcho(s *Server) {
-	go func() {
-		defer c.Close()
-		c.Wg.Add(2)
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		go c.Conn.ReaderEcho(c, ctx, cancelFunc)
-		go c.Conn.WriterEcho(c, ctx)
+func (c *Client) RunEcho() {
+	defer c.Close()
+	c.Wg.Add(2)
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	go c.Conn.ReaderEcho(c, ctx, cancelFunc)
+	go c.Conn.WriterEcho(c, ctx)
 
-		log.Info("Echo阻塞, 等待读写协程结束...")
-		c.Wg.Wait()
-		// 全部读写websocket退出, 通知Server删除客户端变量
-		log.WithField("Client Address", c.Address).Info("全部读写websocket退出, 将通知Server删除客户端")
-		c.Actived = false
-		s.Rmsg <- c.Address
-	}()
+	c.Wg.Wait()
 }
 

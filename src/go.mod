@@ -3,6 +3,7 @@ module github.com/rogerluo410/openai-ws
 go 1.13
 
 require (
+	github.com/alitto/pond v1.8.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0

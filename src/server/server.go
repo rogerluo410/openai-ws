@@ -9,15 +9,17 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/alitto/pond"
 	log "github.com/sirupsen/logrus"
 )
 
 var (
 	initCap = 100
+	poolNum = 1000
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
-		HandshakeTimeout: 62 * time.Second,
+		HandshakeTimeout: 180 * time.Second,
 		CheckOrigin: func(r *http.Request) bool {
 			//r.URL *url.URL
       //r.Header Header
@@ -31,7 +33,8 @@ type Server struct {
 	Rmsg         chan string     // 接收客户端退出消息
 	MaxCnt       uint            // 最大客户连接数
 	VerfiyUrl    string          // 认证服务器地址
-	lock       *sync.Mutex
+	lock         *sync.Mutex       
+	pool         *pond.WorkerPool
 }
 
 func NewServer(tokenUrl string, maxClientCnt uint) *Server {
@@ -41,10 +44,13 @@ func NewServer(tokenUrl string, maxClientCnt uint) *Server {
 		MaxCnt: maxClientCnt,
 		VerfiyUrl: tokenUrl,
 		lock: &sync.Mutex{},
+		pool: pond.New(poolNum, int(maxClientCnt), pond.Strategy(pond.Balanced())),
 	}
 }
 
 func (s *Server) addClient(c *Client) {
+	s.lock.Lock()
+  defer s.lock.Unlock()
 	s.list = append(s.list, c)
 }
 
@@ -52,22 +58,25 @@ func (s *Server) removeClients() {
 	s.lock.Lock()
   defer s.lock.Unlock()
 	for index, client := range s.list {
-		if !client.Actived {
+		if client.Actived == false {
 			s.list = append(s.list[:index], s.list[index+1:]...)
 		}
 	}
+}
+
+func (s *Server) Close() {
+	s.pool.Stop()
+	close(s.Rmsg)
 }
 
 func (s *Server) Listen(ctx context.Context) {
   go func() {
     for {
 			select {
-			// 每隔1分钟查看一次客户数量
-			case <- time.After(1 * time.Minute):
-				log.WithField("Num", s.ActiveClients()).Info("当前活跃用户数")
-			// 每隔15秒清除客户端	
-			case <- time.After(15 * time.Second):
+			// 每隔10秒查看一次客户数量
+			case <- time.After(10 * time.Second):
 				s.removeClients()
+				log.WithField("Num", s.ActiveClients()).Info("当前活跃用户数")
 			case m := <- s.Rmsg:
 				log.WithField("Client Address", m).Info("Server收到客户端结束通信")
 			case <- ctx.Done():
@@ -196,10 +205,10 @@ func (s *Server) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	s.addClient(client)
 
 	if provider[0] == "local" {
-		client.RunEcho(s)
+	  s.pool.Submit(client.RunEcho)
 	} else {
     // 启动Client
-	  client.Run(s)
+	  s.pool.Submit(client.Run)
 	}
 	
 }

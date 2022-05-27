@@ -21,8 +21,6 @@ const (
 	// Send pings to client with this period. Must be less than pongWait.
 	pingPeriod = (pongWait * 9) / 10
 
-	// Max pong message numbers to client.
-	maxPongCnt = 10
 )
 
 // Fix to Connections support one concurrent reader and one concurrent writer.
@@ -49,19 +47,12 @@ func (w *WsConn) Reader(client *Client, ctx context.Context, cancelFunc context.
 		client.Wg.Done()
 	}()
 
-	pongCnt := 0
-
 	w.Conn.SetReadLimit(1024 * 1024)
 	w.Conn.SetReadDeadline(time.Now().Add(pongWait))
 
 	w.Conn.SetPongHandler(func(string) error {
 		w.Conn.SetReadDeadline(time.Now().Add(pongWait))
 		w.Conn.WriteMessage(websocket.PongMessage, []byte{})
-		pongCnt++
-		if pongCnt >= maxPongCnt {
-			log.Info("Client - Reader 协程达到最大pong包发送次数, 将关闭协程")
-			cancelFunc()
-		}
 		return nil
 	})
 
@@ -242,17 +233,10 @@ func (w *WsConn) ReaderEcho(client *Client, ctx context.Context, cancelFunc cont
 		client.Wg.Done()
 	}()
 
-	pongCnt := 0
-
 	w.Conn.SetReadLimit(1024 * 1024)
 
 	w.Conn.SetPongHandler(func(string) error {
 		w.Conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(writeWait))
-		pongCnt++
-		if pongCnt >= maxPongCnt {
-			log.Info("Client - ReaderEcho 协程达到最大pong包发送次数, 将关闭协程")
-			cancelFunc()
-		}
 		return nil
 	})
 
@@ -284,7 +268,7 @@ func (w *WsConn) ReaderEcho(client *Client, ctx context.Context, cancelFunc cont
 			}
 
 			// 写入管道
-			l.WithFields(log.Fields{"Msg": string(msg)}).Info("客户端发送数据, WriterEcho回显")
+			// l.WithFields(log.Fields{"Msg": string(msg)}).Info("客户端发送数据, WriterEcho回显")
 			client.Msg <- string(msg)
 		}
 	}
@@ -304,9 +288,7 @@ func (w *WsConn) WriterEcho(client *Client, ctx context.Context) {
 		case <- ctx.Done():
 			return
 		case <-pingTicker.C:
-			log.Info("Client - WriterEcho 发送心跳包...")
-			// w.Conn.SetWriteDeadline(time.Now().Add(writeWait))
-
+			// log.Info("Client - WriterEcho 发送心跳包...")
 			err := w.Conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait))
 			if err != nil {
 				log.Error("Client - WriterEcho 发送心跳包失败")
