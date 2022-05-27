@@ -1,4 +1,4 @@
-# 压测  
+# 压测FAQ  
 
 ### 客户端错误集  
 
@@ -74,3 +74,49 @@
 
   - 系统线程 / golang runtime 协程 M:N 设置  
  
+
+  - append 不是线程安全的  
+   
+     https://www.fushengwushi.com/archives/1480  
+
+    ```golang
+      func (s *Server) addClient(c *Client) {
+        s.lock.Lock()
+        defer s.lock.Unlock()
+        s.list = append(s.list, c)
+      }
+
+      func (s *Server) removeClients() {
+        s.lock.Lock()
+        defer s.lock.Unlock()
+        for index, client := range s.list {
+          if client.Actived == false {
+            s.list = append(s.list[:index], s.list[index+1:]...)
+          }
+        }
+      }
+
+      // 加了锁， 还是会panic: panic: runtime error: slice bounds out of range [6:4]   
+      // 加了锁， 还是报数组访问越界的panic    
+      // 这就是因为线程不安全导致的 (实际业务中，可以通过 go run -race main.go 进行检测程序的安全性) 
+    ```
+
+    Solution:  
+
+    ```golang
+      func (s *Server) removeClients() {
+        for index, client := range s.list {
+          if client.Actived == false {
+            s.lock.Lock()
+            len := len(s.list)
+
+            // panic: panic: runtime error: slice bounds out of range [6:4]
+            // 为了解决非线程安全的数据越界问题， 需加上数组下标小于数组长度的判断  
+            if index < len {
+              s.list = append(s.list[:index], s.list[index+1:]...)
+            }
+            s.lock.Unlock()
+          }
+        }
+      }
+    ```

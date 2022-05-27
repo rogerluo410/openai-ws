@@ -55,11 +55,17 @@ func (s *Server) addClient(c *Client) {
 }
 
 func (s *Server) removeClients() {
-	s.lock.Lock()
-  defer s.lock.Unlock()
 	for index, client := range s.list {
 		if client.Actived == false {
-			s.list = append(s.list[:index], s.list[index+1:]...)
+			s.lock.Lock()
+			len := len(s.list)
+
+			// panic: panic: runtime error: slice bounds out of range [6:4]
+			// 为了解决非线程安全的数据越界问题， 需加上数组下标小于数组长度的判断  
+			if index < len {
+				s.list = append(s.list[:index], s.list[index+1:]...)
+			}
+			s.lock.Unlock()
 		}
 	}
 }
