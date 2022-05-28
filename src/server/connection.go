@@ -16,7 +16,7 @@ const (
 	writeWait = 60 * time.Second
 
 	// Time allowed to read the file from the client
-	readWait = 40 * time.Second
+	readWait = 60 * time.Second
 
 	// Time allowed to read the next pong message from the client.
 	pongWait = 60 * time.Second
@@ -51,7 +51,6 @@ func (w *WsConn) Reader(client *Client, ctx context.Context, cancelFunc context.
 	}()
 
 	w.Conn.SetReadLimit(1024 * 1024)
-	w.Conn.SetReadDeadline(time.Now().Add(readWait))
 
 	w.Conn.SetPongHandler(func(string) error {
 		w.Conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(pongWait))
@@ -69,6 +68,7 @@ func (w *WsConn) Reader(client *Client, ctx context.Context, cancelFunc context.
 		case <- ctx.Done():
 			return
 		default:
+			w.Conn.SetReadDeadline(time.Now().Add(readWait))
 			_, msg, err := w.Conn.ReadMessage()
 			l := log.WithFields(log.Fields{"Msg": string(msg), "Err": err})
 
@@ -101,8 +101,6 @@ func (w *WsConn) Writer(client *Client, ctx context.Context, cancelFunc context.
 		client.Wg.Done()
 	}()
 
-	w.Conn.SetWriteDeadline(time.Now().Add(readWait))
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -119,6 +117,7 @@ func (w *WsConn) Writer(client *Client, ctx context.Context, cancelFunc context.
 			}
 		case msg := <-client.CloudMsg:
 			str1, _ := msg.(string)
+			w.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 			err := w.Conn.WriteMessage(websocket.TextMessage, []byte(str1))
 			if err != nil {
 				log.WithFields(log.Fields{"Err": err}).Error("Client - Writer 发数据失败")
@@ -138,7 +137,6 @@ func (w *WsConn) CloudReader(client *Client, ctx context.Context, cancelFunc con
 	}()
 
 	w.Conn.SetReadLimit(1024 * 1024)
-	w.Conn.SetReadDeadline(time.Now().Add(readWait))
 
 	w.Conn.SetPongHandler(func(string) error {
 		w.Conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(pongWait))
@@ -156,6 +154,7 @@ func (w *WsConn) CloudReader(client *Client, ctx context.Context, cancelFunc con
 		case <-ctx.Done():
 			return
 		default:
+			w.Conn.SetReadDeadline(time.Now().Add(readWait))
 			_, msg, err := w.Conn.ReadMessage()
 			l := log.WithFields(log.Fields{"Msg": string(msg), "Err": err})
 
@@ -189,8 +188,6 @@ func (w *WsConn) CloudWriter(client *Client, ctx context.Context, cancelFunc con
 		client.Wg.Done()
 	}()
 
-	w.Conn.SetWriteDeadline(time.Now().Add(readWait))
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -211,10 +208,12 @@ func (w *WsConn) CloudWriter(client *Client, ctx context.Context, cancelFunc con
 				case reflect.String:
 					str, _ := m.(string)
 					log.WithField("发给云端服务的字节流:", str).Info("发送字节流")
+					w.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 					err = w.Conn.WriteMessage(websocket.TextMessage, []byte(str))
 					break
 				case reflect.Map:
 					log.WithField("发给云端服务的json:", m).Info("发送json")
+					w.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 					err = w.Conn.WriteJSON(m)
 					break
 				default:
@@ -247,7 +246,6 @@ func (w *WsConn) ReaderEcho(client *Client, ctx context.Context, cancelFunc cont
 	}()
 
 	w.Conn.SetReadLimit(1024 * 1024)
-	w.Conn.SetReadDeadline(time.Now().Add(readWait))
 
 	w.Conn.SetPongHandler(func(string) error {
 		w.Conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(pongWait))
@@ -265,6 +263,7 @@ func (w *WsConn) ReaderEcho(client *Client, ctx context.Context, cancelFunc cont
 		case <- ctx.Done():
 			return
 		default:
+			w.Conn.SetReadDeadline(time.Now().Add(readWait))
 			_, msg, err := w.Conn.ReadMessage()
 			l := log.WithFields(log.Fields{"Msg": string(msg), "Err": err})
 
@@ -297,8 +296,6 @@ func (w *WsConn) WriterEcho(client *Client, ctx context.Context, cancelFunc cont
 		client.Wg.Done()
 	}()
 
-	w.Conn.SetWriteDeadline(time.Now().Add(readWait))
-
 	for {
 		select {
 		case <- ctx.Done():
@@ -315,6 +312,7 @@ func (w *WsConn) WriterEcho(client *Client, ctx context.Context, cancelFunc cont
 			str1, _ := msg.(string)
 			now := time.Now()
 			str1 = "服务端收到消息: `" + str1 + "`, 回显时间: " + now.Format("2006-01-02 15:04:05")
+			w.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 			err := w.Conn.WriteMessage(websocket.TextMessage, []byte(str1))
 			if err != nil {
 				log.WithFields(log.Fields{"Err": err}).Error("Client - WriterEcho 发数据失败")

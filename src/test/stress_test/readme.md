@@ -121,7 +121,31 @@
       }
     ```
 
-  - read message error: websocket: close 1005 (no status)  
+  - 客户端 read message error: websocket: close 1005 (no status)  
+
+    ```golang
+      // Close codes defined in RFC 6455, section 11.7.
+      const (
+        CloseNormalClosure           = 1000
+        CloseGoingAway               = 1001
+        CloseProtocolError           = 1002
+        CloseUnsupportedData         = 1003
+        CloseNoStatusReceived        = 1005
+        CloseAbnormalClosure         = 1006
+        CloseInvalidFramePayloadData = 1007
+        ClosePolicyViolation         = 1008
+        CloseMessageTooBig           = 1009
+        CloseMandatoryExtension      = 1010
+        CloseInternalServerErr       = 1011
+        CloseServiceRestart          = 1012
+        CloseTryAgainLater           = 1013
+        CloseTLSHandshake            = 1015
+      )
+
+      if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
+          log.Printf("error: %v", err)
+      }
+    ```
     
     客户端设置为每20秒发送一次消息:  
     ```golang
@@ -133,6 +157,67 @@
     ```golang
       w.Conn.SetReadDeadline(time.Now().Add(pongWait))  
       w.Conn.SetWriteDeadline(time.Now().Add(writeWait))    
+    ```
+
+    w.Conn.SetReadDeadline(time.Now().Add(readWait)) 设置错了地方  
+
+    应该每次读写之前设置超时最后期限， 我理解为了Timeout(每次读等待多少秒后超时)， 在循环外面设置了一个总的超时。。。  
+
+    ```golang
+      func (w *WsConn) Reader(client *Client, ctx context.Context, cancelFunc context.CancelFunc) {
+        defer func() {
+          log.Info("Client - Reader 协程退出...")
+          w.Conn.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
+          client.Wg.Done()
+        }()
+
+        w.Conn.SetReadLimit(1024 * 1024)
+
+        // 之前在这里设置超时最后期限是当前时间+60秒， 导致60秒后读毕定超时， 
+        // 客户端接收到1005错误  
+        // SetReadDeadline的行为是超时后conn连接状态是被破坏的, 所有读操作返回错误  
+        // SetReadDeadline sets the read deadline on the underlying network connection. After a read has timed out, the websocket connection state is corrupt and all future reads will return an error. A zero value for t means reads will not time out.   
+        // w.Conn.SetReadDeadline(time.Now().Add(readWait))    
+
+        w.Conn.SetPongHandler(func(string) error {
+          w.Conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(pongWait))
+          return nil
+        })
+
+        w.Conn.SetCloseHandler(func(code int, text string) error {
+          log.WithFields(log.Fields{"code": code, "text": text}).Info("Client - Reader 收到客户端关闭消息")
+          w.Conn.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
+          return nil
+        })
+
+        for {
+          select {
+          case <- ctx.Done():
+            return
+          default:
+            w.Conn.SetReadDeadline(time.Now().Add(readWait))
+            _, msg, err := w.Conn.ReadMessage()
+            l := log.WithFields(log.Fields{"Msg": string(msg), "Err": err})
+
+            if err != nil {
+              if websocket.IsCloseError(err, websocket.CloseGoingAway) || err == io.EOF {
+                w.Conn.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
+                l.Info("Client - Reader Websocket 连接关闭")
+              } else {
+                w.Conn.WriteControl(websocket.CloseAbnormalClosure, []byte(err.Error()), time.Now().Add(writeWait))
+                l.Error("Client - Reader Websocket读消息失败, 将关闭websocket连接")
+              }
+              // 如果遇到ws读错误，则关闭websocket连接
+              cancelFunc() // 通知其他协程退出  
+              return
+            }
+
+            // 写入管道
+            l.WithFields(log.Fields{"Msg": string(msg)}).Info("客户端发送数据, 结构化后传入云端服务")
+            client.Msg <- string(msg)
+          }
+        }
+      }
     ```
 
   - 查看进程占用资源  
