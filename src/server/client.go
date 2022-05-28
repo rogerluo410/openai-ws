@@ -45,7 +45,7 @@ func NewClient(
 func (c *Client) Close() {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Error("Channel is already closed...")
+			log.WithFields(log.Fields{"Err": err}).Error("Channel is already closed...")
 		}
 	}()
 
@@ -65,9 +65,9 @@ func (c *Client) Run() {
 	c.Wg.Add(4)
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	go c.Conn.Reader(c, ctx, cancelFunc)
-	go c.Conn.Writer(c, ctx)
-	go c.CloudConn.CloudReader(c, ctx)
-	go c.CloudConn.CloudWriter(c, ctx)
+	go c.Conn.Writer(c, ctx, cancelFunc)
+	go c.CloudConn.CloudReader(c, ctx, cancelFunc)
+	go c.CloudConn.CloudWriter(c, ctx, cancelFunc)
 
 	log.Info("阻塞, 等待读写协程结束...")
 	c.Wg.Wait()
@@ -80,7 +80,7 @@ func (c *Client) RunEcho() {
 	c.Wg.Add(2)
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	go c.Conn.ReaderEcho(c, ctx, cancelFunc)
-	go c.Conn.WriterEcho(c, ctx)
+	go c.Conn.WriterEcho(c, ctx, cancelFunc)
 
 	c.Wg.Wait()
 }

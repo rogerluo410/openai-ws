@@ -120,3 +120,24 @@
         }
       }
     ```
+
+  - read message error: websocket: close 1005 (no status)  
+    
+    客户端设置为每20秒发送一次消息:  
+    ```golang
+      // 每20秒发送一次消息
+			case <- time.After(20 * time.Second):  
+    ```  
+
+    服务端读写等待时间是60秒:  
+    ```golang
+      w.Conn.SetReadDeadline(time.Now().Add(pongWait))  
+      w.Conn.SetWriteDeadline(time.Now().Add(writeWait))    
+    ```
+
+  - 查看进程占用资源  
+
+  ```shell
+    ps aux | grep openai-ws
+    top -pid 53578  
+  ```

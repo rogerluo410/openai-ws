@@ -79,13 +79,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	fmt.Printf("Cpu num: %d\n", runtime.NumCPU()) // 8核cpu
+	log.Infof("Cpu num: %d\n", runtime.NumCPU()) // 8核cpu
 
 	// 虽然goroutine是并发执行的，但是它们并不是并行运行的。如果不告诉Go额外的东西，同
 	// 一时刻只会有一个goroutine执行。利用runtime.GOMAXPROCS(n)可以设置goroutine
 	// 并行执行的数量。GOMAXPROCS 设置了同时运行的CPU 的最大数量，并返回之前的设置。
 	val := runtime.GOMAXPROCS(runtime.NumCPU() * 4)
-	fmt.Printf("Last goroutine num: %d, latest goroutine num: %d \n", val, runtime.NumCPU() * 4) // 8个
+	log.Infof("Last goroutine num: %d, latest goroutine num: %d \n", val, runtime.NumCPU() * 4) // 8个
 
 	var wg = sync.WaitGroup{}
 	wg.Add(2)

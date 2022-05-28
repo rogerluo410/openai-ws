@@ -15,6 +15,9 @@ const (
 	// Time allowed to write the file to the client.
 	writeWait = 60 * time.Second
 
+	// Time allowed to read the file from the client
+	readWait = 120 * time.Second
+
 	// Time allowed to read the next pong message from the client.
 	pongWait = 60 * time.Second
 
@@ -43,28 +46,27 @@ func (w *WsConn) Close() {
 func (w *WsConn) Reader(client *Client, ctx context.Context, cancelFunc context.CancelFunc) {
 	defer func() {
 		log.Info("Client - Reader 协程退出...")
-		w.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+		w.Conn.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
 		client.Wg.Done()
 	}()
 
 	w.Conn.SetReadLimit(1024 * 1024)
-	w.Conn.SetReadDeadline(time.Now().Add(pongWait))
+	w.Conn.SetReadDeadline(time.Now().Add(readWait))
 
 	w.Conn.SetPongHandler(func(string) error {
-		w.Conn.SetReadDeadline(time.Now().Add(pongWait))
-		w.Conn.WriteMessage(websocket.PongMessage, []byte{})
+		w.Conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(pongWait))
 		return nil
 	})
 
 	w.Conn.SetCloseHandler(func(code int, text string) error {
 		log.WithFields(log.Fields{"code": code, "text": text}).Info("Client - Reader 收到客户端关闭消息")
-		w.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+		w.Conn.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
 		return nil
 	})
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <- ctx.Done():
 			return
 		default:
 			_, msg, err := w.Conn.ReadMessage()
@@ -72,13 +74,14 @@ func (w *WsConn) Reader(client *Client, ctx context.Context, cancelFunc context.
 
 			if err != nil {
 				if websocket.IsCloseError(err, websocket.CloseGoingAway) || err == io.EOF {
-					w.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+					w.Conn.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
 					l.Info("Client - Reader Websocket 连接关闭")
 				} else {
-					w.Conn.WriteMessage(websocket.CloseAbnormalClosure, []byte(err.Error()))
+					w.Conn.WriteControl(websocket.CloseAbnormalClosure, []byte(err.Error()), time.Now().Add(writeWait))
 					l.Error("Client - Reader Websocket读消息失败, 将关闭websocket连接")
 				}
 				// 如果遇到ws读错误，则关闭websocket连接
+				cancelFunc() // 通知其他协程退出  
 				return
 			}
 
@@ -89,7 +92,7 @@ func (w *WsConn) Reader(client *Client, ctx context.Context, cancelFunc context.
 	}
 }
 
-func (w *WsConn) Writer(client *Client, ctx context.Context) {
+func (w *WsConn) Writer(client *Client, ctx context.Context, cancelFunc context.CancelFunc) {
 	pingTicker := time.NewTicker(pingPeriod)
 
 	defer func() {
@@ -97,6 +100,8 @@ func (w *WsConn) Writer(client *Client, ctx context.Context) {
 		pingTicker.Stop()
 		client.Wg.Done()
 	}()
+
+	w.Conn.SetWriteDeadline(time.Now().Add(readWait))
 
 	for {
 		select {
@@ -106,20 +111,27 @@ func (w *WsConn) Writer(client *Client, ctx context.Context) {
 			log.Info("Client - Writer 发送心跳包...")
 			w.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 
-			err := w.Conn.WriteMessage(websocket.PingMessage, []byte{})
+			err := w.Conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait))
 			if err != nil {
 				log.Error("Client - Writer 发送心跳包失败")
+				cancelFunc()
 				return
 			}
 		case msg := <-client.CloudMsg:
 			str1, _ := msg.(string)
-			w.Conn.WriteMessage(websocket.TextMessage, []byte(str1))
+			err := w.Conn.WriteMessage(websocket.TextMessage, []byte(str1))
+			if err != nil {
+				log.WithFields(log.Fields{"Err": err}).Error("Client - Writer 发数据失败")
+				cancelFunc()
+				return
+			}
+		default:
 		}
 	}
 }
 
 // 云端连接处理
-func (w *WsConn) CloudReader(client *Client, ctx context.Context) {
+func (w *WsConn) CloudReader(client *Client, ctx context.Context, cancelFunc context.CancelFunc) {
 	defer func() {
 		log.Info("Cloud - Reader 协程退出...")
 		w.Conn.WriteMessage(websocket.CloseMessage, []byte{})
@@ -127,17 +139,16 @@ func (w *WsConn) CloudReader(client *Client, ctx context.Context) {
 	}()
 
 	w.Conn.SetReadLimit(1024 * 1024)
-	w.Conn.SetReadDeadline(time.Now().Add(pongWait))
+	w.Conn.SetReadDeadline(time.Now().Add(readWait))
 
 	w.Conn.SetPongHandler(func(string) error {
-		w.Conn.SetReadDeadline(time.Now().Add(pongWait))
-		w.Conn.WriteMessage(websocket.PongMessage, []byte{})
+		w.Conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(pongWait))
 		return nil
 	})
 
 	w.Conn.SetCloseHandler(func(code int, text string) error {
 		log.WithFields(log.Fields{"code": code, "text": text}).Info("Cloud - Reader 收到客户端关闭消息")
-		w.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+		w.Conn.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
 		return nil
 	})
 
@@ -151,13 +162,14 @@ func (w *WsConn) CloudReader(client *Client, ctx context.Context) {
 
 			if err != nil {
 				if websocket.IsCloseError(err, websocket.CloseGoingAway) || err == io.EOF {
-					w.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+					w.Conn.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
 					l.Info("Cloud - Reader Websocket 连接关闭")
 				} else {
-					w.Conn.WriteMessage(websocket.CloseAbnormalClosure, []byte(err.Error()))
+					w.Conn.WriteControl(websocket.CloseAbnormalClosure, []byte(err.Error()), time.Now().Add(writeWait))
 					l.Error("Cloud - Reader Websocket读消息失败, 将关闭websocket连接")
 				}
 				// 如果遇到ws读错误，则关闭websocket连接
+				cancelFunc()
 				return
 			}
 
@@ -169,7 +181,7 @@ func (w *WsConn) CloudReader(client *Client, ctx context.Context) {
 	}
 }
 
-func (w *WsConn) CloudWriter(client *Client, ctx context.Context) {
+func (w *WsConn) CloudWriter(client *Client, ctx context.Context, cancelFunc context.CancelFunc) {
 	pingTicker := time.NewTicker(pingPeriod)
 
 	defer func() {
@@ -178,15 +190,16 @@ func (w *WsConn) CloudWriter(client *Client, ctx context.Context) {
 		client.Wg.Done()
 	}()
 
+	w.Conn.SetWriteDeadline(time.Now().Add(readWait))
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-pingTicker.C:
 			log.Info("Cloud - Writer 发送心跳包...")
-			w.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 
-			err := w.Conn.WriteMessage(websocket.PingMessage, []byte{})
+			err := w.Conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait))
 			if err != nil {
 				log.Error("Cloud - Writer 发送心跳包失败")
 				return
@@ -215,6 +228,7 @@ func (w *WsConn) CloudWriter(client *Client, ctx context.Context) {
 						"data": m,
 						"err":  err,
 					}).Error("Cloud - Writer Websocket写消息失败, 将关闭websocket连接")
+					cancelFunc()
 					return
 				}
 
@@ -234,9 +248,10 @@ func (w *WsConn) ReaderEcho(client *Client, ctx context.Context, cancelFunc cont
 	}()
 
 	w.Conn.SetReadLimit(1024 * 1024)
+	w.Conn.SetReadDeadline(time.Now().Add(readWait))
 
 	w.Conn.SetPongHandler(func(string) error {
-		w.Conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(writeWait))
+		w.Conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(pongWait))
 		return nil
 	})
 
@@ -256,7 +271,6 @@ func (w *WsConn) ReaderEcho(client *Client, ctx context.Context, cancelFunc cont
 
 			if err != nil {
 				if websocket.IsCloseError(err, websocket.CloseGoingAway) || err == io.EOF {
-				
 					w.Conn.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
 					l.Info("Client - ReaderEcho Websocket 连接关闭")
 				} else {
@@ -264,6 +278,7 @@ func (w *WsConn) ReaderEcho(client *Client, ctx context.Context, cancelFunc cont
 					l.Error("Client - ReaderEcho Websocket读消息失败, 将关闭websocket连接")
 				}
 				// 如果遇到ws读错误，则关闭websocket连接
+				cancelFunc()
 				return
 			}
 
@@ -274,7 +289,7 @@ func (w *WsConn) ReaderEcho(client *Client, ctx context.Context, cancelFunc cont
 	}
 }
 
-func (w *WsConn) WriterEcho(client *Client, ctx context.Context) {
+func (w *WsConn) WriterEcho(client *Client, ctx context.Context, cancelFunc context.CancelFunc) {
 	pingTicker := time.NewTicker(pingPeriod)
 
 	defer func() {
@@ -282,6 +297,8 @@ func (w *WsConn) WriterEcho(client *Client, ctx context.Context) {
 		pingTicker.Stop()
 		client.Wg.Done()
 	}()
+
+	w.Conn.SetWriteDeadline(time.Now().Add(readWait))
 
 	for {
 		select {
@@ -292,13 +309,20 @@ func (w *WsConn) WriterEcho(client *Client, ctx context.Context) {
 			err := w.Conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait))
 			if err != nil {
 				log.Error("Client - WriterEcho 发送心跳包失败")
+				cancelFunc()
 				return
 			}
 		case msg := <- client.Msg:
 			str1, _ := msg.(string)
 			now := time.Now()
 			str1 = "服务端收到消息: `" + str1 + "`, 回显时间: " + now.Format("2006-01-02 15:04:05")
-			w.Conn.WriteMessage(websocket.TextMessage, []byte(str1))
+			err := w.Conn.WriteMessage(websocket.TextMessage, []byte(str1))
+			if err != nil {
+				log.WithFields(log.Fields{"Err": err}).Error("Client - WriterEcho 发数据失败")
+				cancelFunc()
+				return
+			}
+		default:
 		}
 	}
 }

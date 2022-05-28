@@ -88,6 +88,7 @@ func main() {
 		go handle(i, ctx, cancelFunc)
 
 		// 休眠1秒
+		// 创建一个客户端连接后， 需要休眠一会儿， 不然服务端握手超时， 造成读写错误。  
 		time.Sleep(1 * time.Second)
 	}
 
