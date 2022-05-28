@@ -16,7 +16,7 @@ const (
 	writeWait = 60 * time.Second
 
 	// Time allowed to read the file from the client
-	readWait = 120 * time.Second
+	readWait = 40 * time.Second
 
 	// Time allowed to read the next pong message from the client.
 	pongWait = 60 * time.Second
@@ -125,7 +125,6 @@ func (w *WsConn) Writer(client *Client, ctx context.Context, cancelFunc context.
 				cancelFunc()
 				return
 			}
-		default:
 		}
 	}
 }
@@ -322,7 +321,6 @@ func (w *WsConn) WriterEcho(client *Client, ctx context.Context, cancelFunc cont
 				cancelFunc()
 				return
 			}
-		default:
 		}
 	}
 }

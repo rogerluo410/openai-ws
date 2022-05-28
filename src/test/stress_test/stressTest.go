@@ -58,8 +58,8 @@ func main() {
 		go func() {
       for {
 				select {
-				// 每20秒发送一次消息
-				case <- time.After(20 * time.Second):
+				// 每10秒发送一次消息
+				case <- time.After(10 * time.Second):
 					now := time.Now()
 					conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Client %d send message at %s", i, now.Format("2006-01-02 15:04:05"))) )
 				case <- ctx.Done():
@@ -87,9 +87,9 @@ func main() {
 	for i := 0; i < num; i++ {
 		go handle(i, ctx, cancelFunc)
 
-		// 休眠1秒
+		// 休眠100毫秒
 		// 创建一个客户端连接后， 需要休眠一会儿， 不然服务端握手超时， 造成读写错误。  
-		time.Sleep(1 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	wg.Wait()
