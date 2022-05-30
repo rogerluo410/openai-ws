@@ -199,6 +199,15 @@ func verifyToken(token string) bool {
 	r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := client.Do(r)
+
+	defer func() {
+    r.Close = true
+		r.Body.Close();
+		if resp != nil {
+		  resp.Body.Close();
+		}
+	}()
+	
 	if err != nil {
 		log.Error(err)
 		return false

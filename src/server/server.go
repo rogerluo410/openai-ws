@@ -124,13 +124,16 @@ func (s *Server) VerifyToken(token string) bool {
 	defer func() {
     r.Close = true
 		r.Body.Close();
-		resp.Body.Close();
+		if resp != nil {
+      resp.Body.Close();
+		}
 	}()
 
 	if err != nil {
 		log.Error(err)
 		return false
 	}
+
 	log.WithField("status", resp.Status).Info("token验证结果...")
   if "204 No Content" == resp.Status {
 		return true
