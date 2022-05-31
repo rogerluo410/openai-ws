@@ -17,7 +17,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	config "github.com/rogerluo410/openai-ws/src/config"
+	config "github.com/rogerluo410/openai-ws/config"
 )
 
 var (

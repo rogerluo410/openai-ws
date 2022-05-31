@@ -12,8 +12,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	server "github.com/rogerluo410/openai-ws/src/server"
-	grpc "github.com/rogerluo410/openai-ws/src/grpc"
+	server "github.com/rogerluo410/openai-ws/server"
+	grpc "github.com/rogerluo410/openai-ws/grpc"
 )
 
 var (

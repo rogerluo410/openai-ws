@@ -15,8 +15,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/credentials/insecure"
 
-	pb "github.com/rogerluo410/openai-ws/src/grpc/pb"
-	config "github.com/rogerluo410/openai-ws/src/config"
+	pb "github.com/rogerluo410/openai-ws/grpc/pb"
+	config "github.com/rogerluo410/openai-ws/config"
 )
 
 var (

@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/metadata"
 
-	pb "github.com/rogerluo410/openai-ws/src/grpc/pb"
+	pb "github.com/rogerluo410/openai-ws/grpc/pb"
 )
 
 type speechRecognitionServer struct {
