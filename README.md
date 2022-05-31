@@ -52,7 +52,7 @@
 # 部署  
   `make install`    
 
-# Grpc
+# gRPC
   
   ### protoc 
   1. 安装grpc插件  
