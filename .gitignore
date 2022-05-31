@@ -16,4 +16,6 @@
 
 .DS_Store
 
-src/config.yml
+config.yml
+makefile
+./bin

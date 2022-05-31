@@ -1,6 +1,0 @@
-enum34-1.1.10-py2-none-any.whl
-futures-3.3.0-py2-none-any.whl
-six-1.15.0-py2.py3-none-any.whl
-protobuf-3.13.0-cp27-cp27mu-manylinux1_x86_64.whl
-grpcio-1.33.2-cp27-cp27mu-manylinux2010_x86_64.whl
-grpcio_tools-1.33.2-cp27-cp27mu-manylinux2010_x86_64.whl
