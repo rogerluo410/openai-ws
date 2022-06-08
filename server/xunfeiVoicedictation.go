@@ -22,9 +22,6 @@ import (
 
 var (
 	vdHostUrl   = "wss://iat-api.xfyun.cn/v2/iat"
-  Appid     = config.ConfigInstance().XunfeiAppId
-  ApiSecret = config.ConfigInstance().XunfeiApiSecret
-	ApiKey    = config.ConfigInstance().XunfeiApiKey
 )
 
 // 发送数据包格式
@@ -110,11 +107,15 @@ type Cw struct {
 
 // 讯飞通用连接
 func  XunfeiCommonConn(hostUrlTmp string) (*websocket.Conn, error) {
+	// appid     := config.ConfigInstance().XunfeiAppId
+  apiSecret := config.ConfigInstance().XunfeiApiSecret
+	apiKey    := config.ConfigInstance().XunfeiApiKey
+
 	d := websocket.Dialer{
 		HandshakeTimeout: 5 * time.Second,
 	}
 	//握手并建立websocket连接
-	conn, resp, err := d.Dial(assembleAuthUrl(hostUrlTmp, ApiKey, ApiSecret), nil)
+	conn, resp, err := d.Dial(assembleAuthUrl(hostUrlTmp, apiKey, apiSecret), nil)
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode != 101 {
@@ -126,11 +127,15 @@ func  XunfeiCommonConn(hostUrlTmp string) (*websocket.Conn, error) {
 
 // 连接讯飞语音听写的连接串
 func XunfeiVoicedictationConn() (*websocket.Conn, error) {
+	// appid     := config.ConfigInstance().XunfeiAppId
+  apiSecret := config.ConfigInstance().XunfeiApiSecret
+	apiKey    := config.ConfigInstance().XunfeiApiKey
+
 	d := websocket.Dialer{
 		HandshakeTimeout: 5 * time.Second,
 	}
 	//握手并建立websocket连接
-	conn, resp, err := d.Dial(assembleAuthUrl(vdHostUrl, ApiKey, ApiSecret), nil)
+	conn, resp, err := d.Dial(assembleAuthUrl(vdHostUrl, apiKey, apiSecret), nil)
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode != 101 {

@@ -21,8 +21,6 @@ import (
 
 var (
 	asrHostPort = "stream-asr-prod.yitutech.com:50051"
-	devId = config.ConfigInstance().YituDevId
-  devKey = config.ConfigInstance().YituDevKey
 )
 
 // 返回依图grpc连接串
@@ -38,6 +36,9 @@ func yituAsrConn() (*grpc.ClientConn, error) {
 
 // 返回依图认证签名
 func yituAsrAuth() string {
+	devId := config.ConfigInstance().YituDevId
+  devKey := config.ConfigInstance().YituDevKey
+
   ts := strconv.FormatInt(time.Now().Unix(), 10)
 	idTs := devId + ts
   sigHash := hmac.New(sha256.New, []byte(devKey))

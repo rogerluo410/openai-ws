@@ -13,7 +13,7 @@ const CONFIG_FILE = "config.yml"
 
 var configVar *config
 
-func init() {
+func InitConfig() {
 	configVar = &config{}
 	configVar.readConfig()
 }

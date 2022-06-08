@@ -14,6 +14,7 @@ import (
 
 	server "github.com/rogerluo410/openai-ws/server"
 	grpc "github.com/rogerluo410/openai-ws/grpc"
+	config "github.com/rogerluo410/openai-ws/config"
 )
 
 var (
@@ -86,6 +87,9 @@ func main() {
 	// 并行执行的数量。GOMAXPROCS 设置了同时运行的CPU 的最大数量，并返回之前的设置。
 	val := runtime.GOMAXPROCS(runtime.NumCPU() * 4)
 	log.Infof("Last goroutine num: %d, latest goroutine num: %d \n", val, runtime.NumCPU() * 4) // 8个
+
+	// Initialize config file
+	config.InitConfig()
 
 	var wg = sync.WaitGroup{}
 	wg.Add(2)

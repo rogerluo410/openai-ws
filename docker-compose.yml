@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  openai_ws:
+    container_name: openai_ws
+    build: .
+    networks:
+      - testnet
+  
+  websocket_proxy:
+    container_name: openai_websocket_proxy
+    image: nginx:1.21.6
+    ports:
+      - "80:80"
+    volumes:
+      - ./env/websocket.conf:/etc/nginx/nginx.conf:ro
+    links:
+      - "openai_ws:openai_ws"
+    networks:
+      - testnet
+    depends_on:
+      - openai_ws
+
+  grpc_proxy:
+    container_name: openai_grpc_proxy
+    image: nginx:1.21.6
+    ports:
+      - "50051:50051"
+    volumes:
+      - ./env/grpc.conf:/etc/nginx/nginx.conf:ro
+    links:
+      - "openai_ws:openai_ws"
+    networks:
+      - testnet
+    depends_on:
+      - openai_ws
+
+networks:
+  testnet:
+    external: true

@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	config "github.com/rogerluo410/openai-ws/config"
 )
 
 var (
@@ -21,14 +23,18 @@ var (
 
 // 连接串
 func XunfeiRtasrConn() (*websocket.Conn, error) {
+	appid     := config.ConfigInstance().XunfeiAppId
+  // apiSecret := config.ConfigInstance().XunfeiApiSecret
+	apiKey    := config.ConfigInstance().XunfeiApiKey
+
 	ts := strconv.FormatInt(time.Now().Unix(), 10)
-	mac := hmac.New(sha1.New, []byte(ApiKey))
-	strByte := []byte(Appid + ts)
+	mac := hmac.New(sha1.New, []byte(apiKey))
+	strByte := []byte(appid + ts)
 	strMd5Byte := md5.Sum(strByte)
 	strMd5 := fmt.Sprintf("%x", strMd5Byte)
 	mac.Write([]byte(strMd5))
 	signa := url.QueryEscape(base64.StdEncoding.EncodeToString(mac.Sum(nil)))
-	requestParam := "appid=" + Appid + "&ts=" + ts + "&signa=" + signa
+	requestParam := "appid=" + appid + "&ts=" + ts + "&signa=" + signa
 
 	d := websocket.Dialer{
 		HandshakeTimeout: 5 * time.Second,
@@ -36,10 +42,8 @@ func XunfeiRtasrConn() (*websocket.Conn, error) {
 	//握手并建立websocket连接
 	conn, resp, err := d.Dial(rtasrHostUrl + "?" + requestParam, nil)
 	if err != nil {
-		// panic(readResp(resp) + err.Error())
 		return nil, err
 	} else if resp.StatusCode != 101 {
-		// panic(readResp(resp) + err.Error())
 		return nil, err
 	}
 
